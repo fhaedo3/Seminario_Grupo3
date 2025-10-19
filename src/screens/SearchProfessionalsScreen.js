@@ -15,14 +15,26 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { professionals } from "../assets/data/plomerosdata";
+import { FilterModal } from '../components/ProfessionalsFilters'; // Adjust path
 
 export const SearchProfessionalsScreen = ({ navigation }) => {
+
   const handleMissingScreen = (values) => {
     console.log('Pantalla no implementada aun', values);
   };
 
+  const handleFilterModalOpen = (values) => {
+    setFilterModalVisible(true)
+  }
+
+  const handleApplyFilters = (values) => {
+    console.log('hacer coso...');
+  }
+
   const [searchTerm, setSearchTerm] = useState("Plomero");
   const [favorites, setFavorites] = useState(new Set());
+  const [filterModalVisible, setFilterModalVisible] = useState(false); 
+  const [filters, setFilters] = useState(null);
 
   const toggleFavorite = (id) => {
     const newFavorites = new Set(favorites);
@@ -66,7 +78,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
               value={searchTerm}
               onChangeText={setSearchTerm}
             />
-            <TouchableOpacity style={styles.filterButton}>
+            <TouchableOpacity style={styles.filterButton} onPress={handleFilterModalOpen}>
               <Ionicons name="options" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>
@@ -129,6 +141,11 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <FilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        onApplyFilters={handleApplyFilters}
+      />
     </LinearGradient>
   );
 };
