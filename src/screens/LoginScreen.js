@@ -8,6 +8,7 @@ import { colors } from '../theme/colors';
 export const LoginScreen = ({ navigation }) => {
   const handleLogin = (values) => {
     console.log('Usuario intenta iniciar sesión', values);
+    navigation.navigate('SearchProfessionals');
   };
 
   const handleRegister = () => {
