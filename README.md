@@ -1,57 +1,109 @@
 # React Native Login App
 
-Aplicación base de React Native construida con Expo que muestra una pantalla de inicio de sesión moderna.
+Desarrollada con React Native y Expo SDK 54.
 
-## Requisitos previos
+## ⚡ Inicio Rápido
 
-- [Node.js](https://nodejs.org/) 18 o superior
-- [Expo CLI](https://docs.expo.dev/get-started/installation/) (se instala automáticamente al usar `npx`, pero se recomienda tener la aplicación Expo Go en tu dispositivo móvil para probar rápidamente)
-- Android Studio con un emulador configurado **o** un dispositivo Android físico con la app Expo Go (opcional pero recomendado)
+### Requisitos
+- Node.js 20.19.4 o superior
+- Para macOS: `brew install watchman`
 
-## Instalación
-
+### Instalación
 ```bash
-# Clonar el repositorio
 git clone <url-del-repo>
 cd codex-example
-
-# Instalar dependencias
 npm install
 ```
 
-## Ejecución
-
+### Ejecutar en Web
 ```bash
-# Iniciar el servidor de desarrollo de Expo
-npm start
+npm run web
+```
+Se abrirá automáticamente en http://localhost:8081
+
+### Ejecutar en Celular
+1. **Instalar Expo Go** en tu celular:
+   - [Android - Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
+   - [iPhone - App Store](https://apps.apple.com/app/expo-go/id982107779)
+
+2. **Iniciar servidor:**
+   ```bash
+   npm start
+   ```
+
+3. **Escanear código QR:**
+   - **Android**: Abre Expo Go y escanea el código QR
+   - **iPhone**: Abre la cámara y escanea el código QR
+
+### Ejecutar en Emuladores
+```bash
+npm run android  # Android Emulator
+npm run ios      # iOS Simulator (solo macOS)
 ```
 
-El comando anterior abrirá Expo Dev Tools en tu navegador. Desde ahí puedes:
+## 📁 Estructura del Proyecto
 
-- Presionar `a` para lanzar el emulador Android configurado.
-- Escanear el código QR con la app Expo Go para correr la app en un dispositivo físico.
+```
+├── App.js                      # Navegación principal
+├── src/
+│   ├── screens/
+│   │   ├── LoginScreen.js      # Pantalla de inicio de sesión
+│   │   └── RegisterScreen.js   # Pantalla de registro
+│   ├── components/
+│   │   ├── LoginForm.js        # Formulario de login
+│   │   └── RegisterForm.js     # Formulario de registro
+│   └── theme/
+│       └── colors.js           # Paleta de colores
+└── app.json                    # Configuración de Expo
+```
 
-## Estructura del proyecto
+## 🎨 Características
 
-- `App.js`: punto de entrada de la aplicación.
-- `src/screens/LoginScreen.js`: pantalla principal de login.
-- `src/components/LoginForm.js`: formulario validado con Formik + Yup.
-- `src/theme/colors.js`: constantes de colores reutilizables.
-- `app.json`: configuración de Expo.
-- `babel.config.js`: configuración de Babel.
+- **Dos pantallas**: Login y registro con navegación fluida
+- **Validación completa**: Formularios validados con Formik + Yup
+- **Diseño responsive**: Funciona en web, iOS y Android
+- **SDK moderno**: Expo 54 con React 19
+- **Navegación**: React Navigation con stack navigator
 
-## Personalización
+## 🔧 Personalización
 
-- Actualiza el `handleLogin` en `LoginScreen` para conectar con tu backend o lógica de autenticación.
-- Ajusta los colores en `src/theme/colors.js` para adaptar la identidad visual.
-- Añade navegación u otras pantallas usando React Navigation u otra librería.
+Para conectar con tu backend:
+1. Edita `handleLogin` en `LoginScreen.js` 
+2. Edita `handleRegister` en `RegisterScreen.js`
+3. Ajusta los colores en `src/theme/colors.js`
 
-## Generar build nativa (opcional)
-
-Si más adelante deseas generar proyectos nativos para Android o iOS, puedes ejecutar:
+## 🚀 Build para Producción
 
 ```bash
+# Generar proyectos nativos (opcional)
 npx expo prebuild
+
+# Build para stores
+eas build --platform all
 ```
 
-Este comando crea las carpetas `android/` e `ios/` compatibles con Android Studio y Xcode respectivamente.
+## ⚠️ Solución de Problemas
+
+**Errores de archivo en macOS:**
+```bash
+brew install watchman
+```
+
+**Limpiar caché:**
+```bash
+npx expo start --clear
+```
+
+**Versión de Node.js:**
+```bash
+# Actualizar a Node.js 20.19.4+
+nvm install 20.19.4 && nvm use 20.19.4
+```
+
+## 📦 Tecnologías
+
+- **Expo SDK 54** - Framework de desarrollo
+- **React 19** - Librería de UI
+- **React Navigation 6** - Navegación entre pantallas  
+- **Formik + Yup** - Validación de formularios
+- **React Native Web** - Soporte para navegadores

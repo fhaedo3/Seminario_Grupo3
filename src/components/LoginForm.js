@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 const loginSchema = Yup.object().shape({
@@ -22,31 +23,35 @@ export const LoginForm = ({ onSubmit }) => {
       {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Correo electrónico</Text>
-            <TextInput
-              style={[styles.input, touched.email && errors.email ? styles.inputError : undefined]}
-              placeholder="tu-correo@correo.com"
-              placeholderTextColor={colors.muted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              onChangeText={handleChange('email')}
-              onBlur={handleBlur('email')}
-              value={values.email}
-            />
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color={colors.white} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Email o Usuario"
+                placeholderTextColor={colors.mutedText}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                onChangeText={handleChange('email')}
+                onBlur={handleBlur('email')}
+                value={values.email}
+              />
+            </View>
             {touched.email && errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contraseña</Text>
-            <TextInput
-              style={[styles.input, touched.password && errors.password ? styles.inputError : undefined]}
-              placeholder="Ingresa tu contraseña"
-              placeholderTextColor={colors.muted}
-              secureTextEntry
-              onChangeText={handleChange('password')}
-              onBlur={handleBlur('password')}
-              value={values.password}
-            />
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.white} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Contraseña"
+                placeholderTextColor={colors.mutedText}
+                secureTextEntry
+                onChangeText={handleChange('password')}
+                onBlur={handleBlur('password')}
+                value={values.password}
+              />
+            </View>
             {touched.password && errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
           </View>
 
@@ -68,24 +73,25 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   inputGroup: {
-    marginBottom: 18
+    marginBottom: 20
   },
-  label: {
-    color: colors.text,
-    fontWeight: '600',
-    marginBottom: 6
-  },
-  input: {
-    backgroundColor: colors.card,
+  inputContainer: {
+    backgroundColor: colors.inputBackground,
     borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: colors.text,
     borderWidth: 1,
-    borderColor: 'transparent'
+    borderColor: colors.inputBorder,
   },
-  inputError: {
-    borderColor: colors.error
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 16,
   },
   errorText: {
     color: colors.error,
@@ -93,19 +99,20 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
   submitButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
+    backgroundColor: colors.greenButton,
+    borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: colors.primary,
+    marginTop: 20,
+    shadowColor: colors.greenButton,
     shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 4
   },
   submitLabel: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700'
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '600'
   }
 });
