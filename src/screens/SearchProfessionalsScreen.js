@@ -135,7 +135,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
             <Ionicons name="briefcase" size={24} color={colors.white} />
             <Text style={styles.navText}>Mis Trabajos</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} onPress={handleMissingScreen}>
+          <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('ProfileProfessional')}>
             <Ionicons name="person" size={24} color={colors.white} />
             <Text style={styles.navText}>Perfil</Text>
           </TouchableOpacity>
