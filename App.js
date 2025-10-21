@@ -14,6 +14,8 @@ import { ChatScreen } from './src/screens/ChatScreen';
 import { ProfileUserScreen } from './src/screens/ProfileUserScreen';
 import { ProfileProfessionalScreen } from './src/screens/ProfileProfessionalScreen';
 import { ProfessionalDetails } from './src/screens/ProfessionalDetails';
+import { HireFormScreen } from './src/screens/HireFormScreen';
+import { PaymentScreen } from './src/screens/PaymentScreen';
 
 
 const Stack = createStackNavigator();
@@ -52,8 +54,10 @@ export default function App() {
           <Stack.Screen name="MyJobs" component={MyJobsScreen} />
           <Stack.Screen name="Chat" component={ChatScreen} />
           <Stack.Screen name="ProfileUser" component={ProfileUserScreen} />
-          <Stack.Screen name="ProfileProfessional" component={ProfileProfessionalScreen}options={{ headerShown: false }} />
-          <Stack.Screen name="ProfessionalDetails" component={ProfessionalDetails} options={{ headerShown: false }}/>
+          <Stack.Screen name="ProfileProfessional" component={ProfileProfessionalScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfessionalDetails" component={ProfessionalDetails} options={{ headerShown: false }} />
+          <Stack.Screen name="HireForm" component={HireFormScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
