@@ -120,26 +120,6 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
             </View>
           ))}
         </ScrollView>
-
-        {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navButton} onPress={handleMissingScreen}>
-            <Ionicons name="home" size={24} color={colors.white} />
-            <Text style={styles.navText}>Inicio</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} onPress={handleMissingScreen}>
-            <Ionicons name="search" size={24} color={colors.white} />
-            <Text style={styles.navText}>Buscar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} onPress={handleMissingScreen}>
-            <Ionicons name="briefcase" size={24} color={colors.white} />
-            <Text style={styles.navText}>Mis Trabajos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('ProfileProfessional')}>
-            <Ionicons name="person" size={24} color={colors.white} />
-            <Text style={styles.navText}>Perfil</Text>
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
       <FilterModal
         visible={filterModalVisible}
@@ -246,26 +226,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: "italic",
   },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    backgroundColor: colors.primaryBlue,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
-  },
-  navButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navText: {
-    color: colors.white,
-    fontSize: 12,
-    marginTop: 4,
-  },
+  
 });
