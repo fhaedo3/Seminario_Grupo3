@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
+import { BackButton } from '../components/BackButton';
 import { professionals } from '../assets/data/plomerosdata';
 
 export const ProfessionalDetails = ({ route, navigation }) => {
@@ -23,9 +24,11 @@ export const ProfessionalDetails = ({ route, navigation }) => {
       style={styles.container}
     >
       {/* Botón Volver */}
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={24} color="#fff" />
-      </TouchableOpacity>
+      <BackButton
+        navigation={navigation}
+        style={styles.backButton}
+        backgroundColor="rgba(0,0,0,0.3)"
+      />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Imagen y encabezado */}
@@ -89,9 +92,6 @@ const styles = StyleSheet.create({
     top: 50,
     left: 20,
     zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    padding: 8,
-    borderRadius: 30,
   },
   card: {
     width: '100%',

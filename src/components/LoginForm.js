@@ -93,9 +93,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   errorText: {
-    color: colors.error,
-    marginTop: 6,
-    fontSize: 13
+    color: colors.errorStrong,
+    backgroundColor: colors.errorBackground,
+    borderColor: colors.errorBorder,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+    fontSize: 13,
+    alignSelf: 'flex-start'
   },
   submitButton: {
     backgroundColor: colors.greenButton,

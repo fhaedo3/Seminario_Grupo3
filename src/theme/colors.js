@@ -14,12 +14,15 @@ export const colors = {
   greenButtonDark: '#059669',
   
   // Estados
-  error: '#ef4444',
+  error: '#f87171',
+  errorStrong: '#fca5a5',
+  errorBackground: 'rgba(248, 113, 113, 0.16)',
+  errorBorder: 'rgba(248, 113, 113, 0.4)',
   success: '#10b981',
   
   // Campos de entrada
-  inputBackground: 'rgba(59, 130, 246, 0.3)',
-  inputBorder: 'rgba(59, 130, 246, 0.5)',
+  inputBackground: 'rgba(15, 23, 42, 0.55)',
+  inputBorder: 'rgba(148, 163, 184, 0.45)',
   
   // Overlays
   overlay: 'rgba(30, 58, 138, 0.95)'

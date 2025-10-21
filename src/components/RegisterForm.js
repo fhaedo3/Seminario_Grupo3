@@ -33,7 +33,10 @@ export const RegisterForm = ({ onSubmit }) => {
         setTimeout(() => helpers.setSubmitting(false), 1000);
       }}
     >
-      {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting, setFieldValue }) => (
+      {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting, setFieldValue }) => {
+        const showAcceptError = touched.acceptTerms && Boolean(errors.acceptTerms);
+
+        return (
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <View style={styles.inputContainer}>
@@ -116,20 +119,20 @@ export const RegisterForm = ({ onSubmit }) => {
             {touched.confirmPassword && errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
           </View>
 
-          <View style={styles.checkboxContainer}>
+          <View style={[styles.checkboxContainer, showAcceptError && styles.checkboxContainerError]}>
             <TouchableOpacity
-              style={styles.checkbox}
+              style={[styles.checkbox, showAcceptError && styles.checkboxError]}
               onPress={() => setFieldValue('acceptTerms', !values.acceptTerms)}
             >
               {values.acceptTerms && (
                 <Ionicons name="checkmark" size={16} color={colors.white} />
               )}
             </TouchableOpacity>
-            <Text style={styles.checkboxText}>
+            <Text style={[styles.checkboxText, showAcceptError && styles.checkboxTextError]}>
               Acepto los <Text style={styles.linkText}>Términos y Condiciones</Text>
             </Text>
           </View>
-          {touched.acceptTerms && errors.acceptTerms ? <Text style={styles.errorText}>{errors.acceptTerms}</Text> : null}
+          {showAcceptError ? <Text style={styles.errorText}>{errors.acceptTerms}</Text> : null}
 
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? (
@@ -139,7 +142,8 @@ export const RegisterForm = ({ onSubmit }) => {
             )}
           </TouchableOpacity>
         </View>
-      )}
+      );
+      }}
     </Formik>
   );
 };
@@ -170,15 +174,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   errorText: {
-    color: colors.error,
-    marginTop: 6,
-    fontSize: 13
+    color: colors.errorStrong,
+    backgroundColor: colors.errorBackground,
+    borderColor: colors.errorBorder,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+    fontSize: 13,
+    alignSelf: 'flex-start'
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 20,
+  },
+  checkboxContainerError: {
+    backgroundColor: colors.errorBackground,
+    borderColor: colors.errorBorder,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   checkbox: {
     width: 20,
@@ -191,10 +210,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'transparent',
   },
+  checkboxError: {
+    borderColor: colors.errorStrong,
+  },
   checkboxText: {
     color: colors.white,
     fontSize: 14,
     flex: 1,
+  },
+  checkboxTextError: {
+    color: colors.errorStrong,
+    fontWeight: '600',
   },
   linkText: {
     color: colors.greenButton,

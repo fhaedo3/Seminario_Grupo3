@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { BackButton } from '../components/BackButton';
 import { colors } from '../theme/colors';
 
 const fallbackProfessional = {
@@ -92,12 +93,13 @@ export const ChatScreen = ({ navigation, route }) => {
                 {/* Header */}
                 <View style={styles.header}>
                     {/* TODO CAMBIAR POR COMPONENTE DE MIS TRABAJOS CUANDO ESTE */}
-                    <TouchableOpacity
-                        onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('MyJobs'))}
+                    <BackButton
+                        navigation={navigation}
+                        fallbackRoute="MyJobs"
                         style={styles.backButton}
-                    >
-                        <Ionicons name="arrow-back" size={28} color={colors.white} />
-                    </TouchableOpacity>
+                        iconSize={28}
+                        backgroundColor="transparent"
+                    />
                     <Image source={professional.avatar} style={styles.headerAvatar} />
                     <View>
                         <Text style={styles.headerTitle}>{professional.name}</Text>

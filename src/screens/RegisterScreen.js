@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacit
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RegisterForm } from '../components/RegisterForm';
+import { BackButton } from '../components/BackButton';
 import { colors } from '../theme/colors';
 
 export const RegisterScreen = ({ navigation }) => {
@@ -29,6 +30,9 @@ export const RegisterScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.topBar}>
+            <BackButton navigation={navigation} fallbackRoute="Login" />
+          </View>
           <View style={styles.content}>
             <Text style={styles.title}>Crear cuenta</Text>
             
@@ -63,6 +67,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  topBar: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+    alignItems: 'flex-start',
   },
   title: {
     color: colors.white,

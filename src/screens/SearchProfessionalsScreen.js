@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { professionals } from "../assets/data/plomerosdata";
 import { FilterModal } from '../components/ProfessionalsFilters'; // Adjust path
+import { BackButton } from '../components/BackButton';
 import { BottomNav } from '../components/BottomNav';
 
 export const SearchProfessionalsScreen = ({ navigation }) => {
@@ -64,6 +65,9 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
       >
         {/* Header */}
         <View style={styles.header}>
+          <View style={styles.headerTopRow}>
+            <BackButton navigation={navigation} fallbackRoute="Homepage" />
+          </View>
           <Text style={styles.title}>Buscar</Text>
           <Text style={styles.subtitle}>Encontrá profesionales de confianza</Text>
         </View>
@@ -177,6 +181,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 8,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   title: {
     color: colors.white,

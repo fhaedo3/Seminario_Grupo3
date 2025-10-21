@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
+import { BackButton } from '../components/BackButton';
 
 const jobs = [
   {
@@ -64,7 +65,10 @@ export const MyJobsScreen = ({ navigation }) => {
       <StatusBar style="light" />
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Mis trabajos</Text>
+          <View style={styles.headerTopRow}>
+            <BackButton navigation={navigation} fallbackRoute="Homepage" />
+            <Text style={styles.headerTitle}>Mis trabajos</Text>
+          </View>
           <Text style={styles.headerSubtitle}>Seguimiento rápido de tus servicios activos</Text>
         </View>
 
@@ -132,11 +136,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 12,
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
   headerTitle: {
     color: colors.white,
     fontSize: 30,
     fontWeight: '700',
-    marginBottom: 6,
   },
   headerSubtitle: {
     color: colors.mutedText,

@@ -13,6 +13,8 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { BottomNav } from '../components/BottomNav';
+import { BackButton } from '../components/BackButton';
+import { showSuccessToast } from '../utils/notifications';
 
 const PAYMENT_METHODS_OPTIONS = [
   { id: "efectivo", label: "Efectivo", icon: "cash" },
@@ -48,6 +50,7 @@ export const ProfileUserScreen = ({ navigation }) => {
   const handleSave = () => {
     console.log("Guardando cambios:", formData);
     console.log("Métodos de pago:", paymentMethods);
+    showSuccessToast('Datos guardados correctamente');
     // Aquí iría la lógica para guardar los cambios
   };
 
@@ -61,6 +64,7 @@ export const ProfileUserScreen = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerRow}>
+            <BackButton navigation={navigation} fallbackRoute="Homepage" />
             <Text style={styles.headerTitle}>Mi Perfil</Text>
             <TouchableOpacity
               style={styles.logoutButton}
@@ -270,11 +274,14 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 32,
     fontWeight: "700",
+    flex: 1,
+    textAlign: 'center',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
   logoutButton: {
     flexDirection: 'row',
