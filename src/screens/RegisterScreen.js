@@ -35,9 +35,9 @@ export const RegisterScreen = ({ navigation }) => {
             <RegisterForm onSubmit={handleRegister} />
             
             <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>¿Ya tienes una cuenta? </Text>
-              <TouchableOpacity onPress={handleLogin}>
-                <Text style={styles.loginLink}>Inicia sesión</Text>
+              <Text style={styles.loginText}>¿Ya tienes una cuenta?</Text>
+              <TouchableOpacity style={styles.secondaryButton} onPress={handleLogin}>
+                <Text style={styles.secondaryButtonText}>Inicia sesion</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -74,15 +74,23 @@ const styles = StyleSheet.create({
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
     marginTop: 24,
   },
   loginText: {
     color: colors.white,
     fontSize: 16,
   },
-  loginLink: {
-    color: colors.greenButton,
-    fontSize: 16,
+  secondaryButton: {
+    backgroundColor: colors.greenButton,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  secondaryButtonText: {
+    color: colors.white,
+    fontSize: 14,
     fontWeight: '600',
   },
 });

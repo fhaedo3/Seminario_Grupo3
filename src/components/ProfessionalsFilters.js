@@ -13,7 +13,7 @@ import { colors } from '../theme/colors';
 export const FilterModal = ({ visible, onClose, onApplyFilters }) => {
   const [selectedDistance, setSelectedDistance] = useState('5-10 km');
   const [selectedProfession, setSelectedProfession] = useState('Plomero');
-  const [selectedOther, setSelectedOther] = useState('Si SupIera');
+  const [selectedOther, setSelectedOther] = useState('Popular'); // fixed default
 
   const distances = ['< 5 km', '5-10 km', '10-25 km'];
   const professions = ['Plomero', 'Electricista', 'Gasista'];

@@ -10,8 +10,6 @@ Desarrollada con React Native y Expo SDK 54.
 
 ### Instalación
 ```bash
-git clone <url-del-repo>
-cd codex-example
 npm install
 ```
 

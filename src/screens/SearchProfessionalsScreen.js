@@ -16,19 +16,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { professionals } from "../assets/data/plomerosdata";
 import { FilterModal } from '../components/ProfessionalsFilters'; // Adjust path
+import { BottomNav } from '../components/BottomNav';
 
 export const SearchProfessionalsScreen = ({ navigation }) => {
 
-  const handleMissingScreen = (values) => {
-    console.log('Pantalla no implementada aun', values);
-  };
-
-  const handleFilterModalOpen = (values) => {
+  const handleFilterModalOpen = () => {
     setFilterModalVisible(true)
   }
 
   const handleApplyFilters = (values) => {
-    console.log('hacer coso...');
+    setFilters(values);
+    setFilterModalVisible(false);
   }
 
   const [searchTerm, setSearchTerm] = useState("Plomero");
@@ -46,6 +44,13 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
     setFavorites(newFavorites);
   };
 
+  const filteredProfessionals = professionals.filter((prof) => {
+    const term = (searchTerm || '').toLowerCase();
+    const matchesTerm = prof.name?.toLowerCase().includes(term) || prof.profession?.toLowerCase().includes(term);
+    const matchesProfession = filters?.profession ? prof.profession === filters.profession : true;
+    return matchesTerm && matchesProfession;
+  });
+
   return (
     <LinearGradient
       colors={[colors.primaryBlue, colors.secondaryBlue]}
@@ -59,7 +64,8 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Buscá profesionales</Text>
+          <Text style={styles.title}>Buscar</Text>
+          <Text style={styles.subtitle}>Encontrá profesionales de confianza</Text>
         </View>
 
         {/* Search Bar */}
@@ -90,7 +96,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {professionals.map((prof) => (
+          {filteredProfessionals.map((prof) => (
             <View key={prof.id} style={styles.card}>
               <View style={styles.cardContent}>
                 <Image source={prof.image} style={styles.profileImage} />
@@ -117,30 +123,39 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
                   <Text style={styles.description}>{prof.description}</Text>
                 </View>
               </View>
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={styles.primaryAction}
+                  onPress={() =>
+                    navigation.navigate('Chat', {
+                      professional: {
+                        name: prof.name,
+                        profession: prof.profession,
+                        avatar: prof.image,
+                      },
+                      jobSummary: `Consulta sobre ${prof.profession.toLowerCase()}`,
+                    })
+                  }
+                >
+                  <Ionicons name="chatbubble-ellipses" size={18} color={colors.white} />
+                  <Text style={styles.primaryActionText}>Chatear</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  onPress={() => navigation.navigate('ProfileProfessional')}
+                >
+                  <Ionicons name="person-circle-outline" size={18} color={colors.white} />
+                  <Text style={styles.secondaryActionText}>Ver perfil</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </ScrollView>
 
         {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navButton} onPress={handleMissingScreen}>
-            <Ionicons name="home" size={24} color={colors.white} />
-            <Text style={styles.navText}>Inicio</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} onPress={handleMissingScreen}>
-            <Ionicons name="search" size={24} color={colors.white} />
-            <Text style={styles.navText}>Buscar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} onPress={handleMissingScreen}>
-            <Ionicons name="briefcase" size={24} color={colors.white} />
-            <Text style={styles.navText}>Mis Trabajos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('ProfileProfessional')}>
-            <Ionicons name="person" size={24} color={colors.white} />
-            <Text style={styles.navText}>Perfil</Text>
-          </TouchableOpacity>
-        </View>
+        
       </KeyboardAvoidingView>
+      <BottomNav navigation={navigation} profileRoute="ProfileProfessional" searchRoute="SearchProfessionals" />
       <FilterModal
         visible={filterModalVisible}
         onClose={() => setFilterModalVisible(false)}
@@ -157,16 +172,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: Platform.OS === "ios" ? 50 : 40,
+    paddingBottom: 110,
   },
   header: {
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 20,
+    paddingBottom: 8,
   },
   title: {
     color: colors.white,
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "700",
+  },
+  subtitle: {
+    color: colors.white,
+    opacity: 0.8,
+    marginTop: 4,
   },
   searchContainer: {
     paddingHorizontal: 24,
@@ -199,7 +220,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingBottom: 160,
+    flexGrow: 1,
   },
   card: {
     backgroundColor: "rgba(255, 255, 255, 0.2)",
@@ -246,26 +268,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: "italic",
   },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  actionsRow: {
     flexDirection: "row",
-    backgroundColor: colors.primaryBlue,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 14,
+    gap: 12,
   },
-  navButton: {
+  primaryAction: {
     flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.greenButton,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
-  navText: {
+  primaryActionText: {
     color: colors.white,
-    fontSize: 12,
-    marginTop: 4,
+    fontWeight: "600",
+  },
+  secondaryAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  secondaryActionText: {
+    color: colors.white,
+    fontWeight: "600",
   },
 });

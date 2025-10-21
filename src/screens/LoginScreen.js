@@ -6,9 +6,21 @@ import { LoginForm } from '../components/LoginForm';
 import { colors } from '../theme/colors';
 
 export const LoginScreen = ({ navigation }) => {
+  const [authError, setAuthError] = useState('');
+
   const handleLogin = (values) => {
-    console.log('Usuario intenta iniciar sesión', values);
-    navigation.navigate('SearchProfessionals');
+    const username = values.username?.trim();
+    const password = values.password;
+    if (!username || !password) {
+      setAuthError('Ingresa tus credenciales para continuar');
+      return;
+    }
+
+    setAuthError('');
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Homepage', params: { userName: username.split(' ')[0] } }],
+    });
   };
 
   const handleRegister = () => {
@@ -31,14 +43,16 @@ export const LoginScreen = ({ navigation }) => {
           
           <LoginForm onSubmit={handleLogin} />
           
+          {authError ? <Text style={styles.authError}>{authError}</Text> : null}
+          
           <TouchableOpacity style={styles.forgotPassword}>
             <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
           
           <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>¿No tienes una cuenta? </Text>
-            <TouchableOpacity onPress={handleRegister}>
-              <Text style={styles.registerLink}>Regístrate</Text>
+            <Text style={styles.registerText}>¿No tienes una cuenta?</Text>
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleRegister}>
+              <Text style={styles.secondaryButtonText}>Registrate</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -79,15 +93,28 @@ const styles = StyleSheet.create({
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
     marginTop: 32,
   },
   registerText: {
     color: colors.white,
     fontSize: 16,
   },
-  registerLink: {
-    color: colors.greenButton,
-    fontSize: 16,
+  secondaryButton: {
+    backgroundColor: colors.greenButton,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  secondaryButtonText: {
+    color: colors.white,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  authError: {
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: 10,
   },
 });

@@ -16,16 +16,16 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
-const professional = {
+const fallbackProfessional = {
     name: 'Jonathan Leguizamón',
     avatar: require('../assets/images/plomero3.png'),
     profession: 'Plomero',
 };
 
-const initialMessages = [
+const fallbackMessages = [
     { id: 1, text: 'Hola, en que puedo ayudarte?', sender: 'professional' },
     { id: 2, text: 'Estoy con una gotera', sender: 'user' },
-    { id: 3, text: 'Si queres mandame una foto por aca así me fijo', sender: 'professional' },
+    { id: 3, text: 'Si queres mandame una foto asi me fijo', sender: 'professional' },
     {
         id: 4,
         text: 'Es en el techo de la cocina',
@@ -33,12 +33,13 @@ const initialMessages = [
         image: require('../assets/images/gotera.png'),
     },
 ];
-// --- Fin de Datos Mock ---
 
+export const ChatScreen = ({ navigation, route }) => {
+    const professional = route?.params?.professional ?? fallbackProfessional;
+    const jobSummary = route?.params?.jobSummary ?? 'Detalle del trabajo';
+    const conversationSeed = route?.params?.initialMessages ?? fallbackMessages;
 
-
-export const ChatScreen = ({ navigation }) => {
-    const [messages, setMessages] = useState(initialMessages);
+    const [messages, setMessages] = useState(() => [...conversationSeed]);
     const [inputText, setInputText] = useState('');
     const scrollViewRef = useRef();
 
@@ -57,6 +58,10 @@ export const ChatScreen = ({ navigation }) => {
     useEffect(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
     }, [messages]);
+
+    useEffect(() => {
+        setMessages(Array.isArray(conversationSeed) ? [...conversationSeed] : []);
+    }, [conversationSeed]);
 
     const MessageBubble = ({ msg }) => {
         const isUser = msg.sender === 'user';
@@ -87,7 +92,10 @@ export const ChatScreen = ({ navigation }) => {
                 {/* Header */}
                 <View style={styles.header}>
                     {/* TODO CAMBIAR POR COMPONENTE DE MIS TRABAJOS CUANDO ESTE */}
-                    <TouchableOpacity onPress={() => navigation.navigate('SearchProfessionals')} style={styles.backButton}>
+                    <TouchableOpacity
+                        onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('MyJobs'))}
+                        style={styles.backButton}
+                    >
                         <Ionicons name="arrow-back" size={28} color={colors.white} />
                     </TouchableOpacity>
                     <Image source={professional.avatar} style={styles.headerAvatar} />
@@ -100,6 +108,11 @@ export const ChatScreen = ({ navigation }) => {
                             <Ionicons name="ellipsis-vertical" size={24} color={colors.white} />
                         </TouchableOpacity>
                     </View>
+                </View>
+
+                <View style={styles.jobSummary}>
+                    <Ionicons name="briefcase-outline" size={18} color={colors.white} style={styles.jobSummaryIcon} />
+                    <Text style={styles.jobSummaryText}>{jobSummary}</Text>
                 </View>
 
                 {/* Messages List */}
@@ -168,6 +181,22 @@ const styles = StyleSheet.create({
     headerSubtitle: {
         color: colors.lightGray,
         fontSize: 14,
+    },
+    jobSummary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 18,
+        paddingBottom: 10,
+        gap: 8,
+    },
+    jobSummaryIcon: {
+        marginTop: 2,
+    },
+    jobSummaryText: {
+        color: colors.white,
+        fontSize: 14,
+        flex: 1,
+        opacity: 0.8,
     },
     headerIcons: {
         flexDirection: 'row',

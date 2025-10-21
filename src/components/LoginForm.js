@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 const loginSchema = Yup.object().shape({
-  email: Yup.string().email('Ingresa un correo válido').required('El correo es obligatorio'),
+  username: Yup.string().required('El usuario es obligatorio'),
   password: Yup.string().min(6, 'La contraseña debe tener al menos 6 caracteres').required('La contraseña es obligatoria')
 });
 
@@ -14,7 +14,7 @@ export const LoginForm = ({ onSubmit }) => {
   return (
     <Formik
       validationSchema={loginSchema}
-      initialValues={{ email: '', password: '' }}
+      initialValues={{ username: '', password: '' }}
       onSubmit={(values, helpers) => {
         onSubmit?.(values);
         setTimeout(() => helpers.setSubmitting(false), 1000);
@@ -27,16 +27,15 @@ export const LoginForm = ({ onSubmit }) => {
               <Ionicons name="person-outline" size={20} color={colors.white} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Email o Usuario"
+                placeholder="Usuario o Email"
                 placeholderTextColor={colors.mutedText}
-                keyboardType="email-address"
                 autoCapitalize="none"
-                onChangeText={handleChange('email')}
-                onBlur={handleBlur('email')}
-                value={values.email}
+                onChangeText={handleChange('username')}
+                onBlur={handleBlur('username')}
+                value={values.username}
               />
             </View>
-            {touched.email && errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+            {touched.username && errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>

@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
+import { BottomNav } from '../components/BottomNav';
 
 const AVAILABLE_JOBS = [
   "Plomería",
@@ -114,7 +115,21 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Mi Perfil</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.headerTitle}>Mi Perfil</Text>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={() =>
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                })
+              }
+            >
+              <Ionicons name="log-out-outline" size={20} color={colors.white} />
+              <Text style={styles.logoutText}>Salir</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Profile Section */}
@@ -414,31 +429,8 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => navigation.navigate("SearchProfessionals")}
-          >
-            <Ionicons name="home" size={24} color={colors.white} />
-            <Text style={styles.navText}>Inicio</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => navigation.navigate("SearchProfessionals")}
-          >
-            <Ionicons name="search" size={24} color={colors.white} />
-            <Text style={styles.navText}>Buscar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton}>
-            <Ionicons name="briefcase" size={24} color={colors.white} />
-            <Text style={styles.navText}>Mis Trabajos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton}>
-            <Ionicons name="person" size={24} color={colors.white} />
-            <Text style={styles.navText}>Perfil</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Bottom Navigation (reemplazado por componente) */}
+        <BottomNav navigation={navigation} profileRoute="ProfileProfessional" />
       </View>
     </LinearGradient>
   );
@@ -451,6 +443,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: Platform.OS === "ios" ? 50 : 40,
+    paddingBottom: 110,
   },
   header: {
     paddingHorizontal: 24,
@@ -462,12 +455,33 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "700",
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)'
+  },
+  logoutText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600'
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 200,
+    paddingBottom: 240,
+    flexGrow: 1,
   },
   avatarSection: {
     alignItems: "center",
@@ -580,28 +594,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 18,
     fontWeight: "600",
-  },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    backgroundColor: colors.primaryBlue,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
-  },
-  navButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navText: {
-    color: colors.white,
-    fontSize: 12,
-    marginTop: 4,
   },
   checkboxContainer: {
     marginTop: 8,
