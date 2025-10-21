@@ -163,7 +163,11 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
         {/* Bottom Navigation */}
         
       </KeyboardAvoidingView>
-      
+      <FilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        onApplyFilters={handleApplyFilters}
+      />
     </LinearGradient>
   );
 };
