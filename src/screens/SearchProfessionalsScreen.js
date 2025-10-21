@@ -142,7 +142,11 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.secondaryAction}
-                  onPress={() => navigation.navigate('ProfileProfessional')}
+                  onPress={() =>
+                    navigation.navigate('ProfessionalDetails', {
+                      professionalId: prof.id, // ← pasamos el ID del profesional
+                    })
+                  }
                 >
                   <Ionicons name="person-circle-outline" size={18} color={colors.white} />
                   <Text style={styles.secondaryActionText}>Ver perfil</Text>
@@ -155,12 +159,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
         {/* Bottom Navigation */}
         
       </KeyboardAvoidingView>
-      <BottomNav navigation={navigation} profileRoute="ProfileProfessional" searchRoute="SearchProfessionals" />
-      <FilterModal
-        visible={filterModalVisible}
-        onClose={() => setFilterModalVisible(false)}
-        onApplyFilters={handleApplyFilters}
-      />
+      
     </LinearGradient>
   );
 };
