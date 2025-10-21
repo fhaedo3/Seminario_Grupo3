@@ -5,11 +5,25 @@ import * as Yup from 'yup';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
+const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,30}$/;
+const PHONE_REGEX = /^\+?\d{7,15}$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
 const registerSchema = Yup.object().shape({
-  username: Yup.string().min(3, 'El usuario debe tener al menos 3 caracteres').required('El usuario es obligatorio'),
-  email: Yup.string().email('Ingresa un correo válido').required('El correo es obligatorio'),
-  phone: Yup.string().min(10, 'El teléfono debe tener al menos 10 dígitos'),
-  password: Yup.string().min(6, 'La contraseña debe tener al menos 6 caracteres').required('La contraseña es obligatoria'),
+  username: Yup.string()
+    .trim()
+    .matches(USERNAME_REGEX, 'Usa de 3 a 30 caracteres alfanuméricos (., _, - permitidos)')
+    .required('El usuario es obligatorio'),
+  email: Yup.string().trim().email('Ingresa un correo válido').required('El correo es obligatorio'),
+  phone: Yup.string()
+    .trim()
+    .matches(PHONE_REGEX, {
+      message: 'Ingresa un teléfono válido. Solo números y un + opcional',
+      excludeEmptyString: true
+    }),
+  password: Yup.string()
+    .matches(PASSWORD_REGEX, 'Mínimo 8 caracteres, con mayúscula, minúscula y número')
+    .required('La contraseña es obligatoria'),
   confirmPassword: Yup.string()
     .oneOf([Yup.ref('password'), null], 'Las contraseñas deben coincidir')
     .required('Confirma tu contraseña'),

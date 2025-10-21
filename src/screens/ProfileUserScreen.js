@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Platform,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
@@ -24,6 +25,11 @@ const PAYMENT_METHODS_OPTIONS = [
   { id: "transferencia", label: "Transferencia Bancaria", icon: "swap-horizontal" },
 ];
 
+const NAME_REGEX = /^[a-zA-ZÁÉÍÓÚÑáéíóúñ\s'-]{3,60}$/;
+const LOCATION_REGEX = /^[a-zA-ZÁÉÍÓÚÑáéíóúñ0-9.,\s-]{3,80}$/;
+const PHONE_REGEX = /^\+?\d{7,15}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const ProfileUserScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     fullName: "",
@@ -34,22 +40,125 @@ export const ProfileUserScreen = ({ navigation }) => {
 
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [expandedSection, setExpandedSection] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
   const togglePaymentMethod = (methodId) => {
-    setPaymentMethods((prev) =>
-      prev.includes(methodId)
+    setPaymentMethods((prev) => {
+      const updated = prev.includes(methodId)
         ? prev.filter((m) => m !== methodId)
-        : [...prev, methodId]
-    );
+        : [...prev, methodId];
+
+      if (updated.length > 0) {
+        setFormErrors((errors) => {
+          if (!errors.paymentMethods) {
+            return errors;
+          }
+          const { paymentMethods: _omit, ...rest } = errors;
+          return rest;
+        });
+      }
+
+      return updated;
+    });
+  };
+
+  const clearError = (field) => {
+    setFormErrors((prev) => {
+      if (!prev[field]) {
+        return prev;
+      }
+      const { [field]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const validateField = (field, rawValue) => {
+    const value = rawValue?.trim?.() ?? "";
+
+    switch (field) {
+      case "fullName":
+        if (!value) {
+          return "Ingresa tu nombre completo";
+        }
+        if (!NAME_REGEX.test(value)) {
+          return "Usa solo letras y entre 3 y 60 caracteres";
+        }
+        return null;
+      case "location":
+        if (!value) {
+          return "Ingresa tu ubicación";
+        }
+        if (!LOCATION_REGEX.test(value)) {
+          return "La ubicación contiene caracteres inválidos";
+        }
+        return null;
+      case "phone":
+        if (!value) {
+          return "Ingresa tu teléfono";
+        }
+        if (!PHONE_REGEX.test(value)) {
+          return "Ingresa un teléfono válido (7 a 15 dígitos)";
+        }
+        return null;
+      case "email":
+        if (!value) {
+          return "Ingresa tu correo electrónico";
+        }
+        if (!EMAIL_REGEX.test(value)) {
+          return "Ingresa un correo electrónico válido";
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleInputChange = (field) => (text) => {
+    setFormData((prev) => ({ ...prev, [field]: text }));
+
+    if (formErrors[field]) {
+      const fieldError = validateField(field, text);
+      if (fieldError) {
+        setFormErrors((prev) => ({ ...prev, [field]: fieldError }));
+        return;
+      }
+      clearError(field);
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    Object.entries(formData).forEach(([field, value]) => {
+      const fieldError = validateField(field, value);
+      if (fieldError) {
+        newErrors[field] = fieldError;
+      }
+    });
+
+    if (paymentMethods.length === 0) {
+      newErrors.paymentMethods = "Seleccioná al menos un método de pago";
+    }
+
+    return newErrors;
   };
 
   const handleSave = () => {
+    const newErrors = validateForm();
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrors(newErrors);
+      Alert.alert('Revisa los datos', 'Corregí los campos marcados antes de guardar.');
+      return;
+    }
+
     console.log("Guardando cambios:", formData);
     console.log("Métodos de pago:", paymentMethods);
+    setFormErrors({});
     showSuccessToast('Datos guardados correctamente');
     // Aquí iría la lógica para guardar los cambios
   };
@@ -99,6 +208,14 @@ export const ProfileUserScreen = ({ navigation }) => {
             <Text style={styles.userName}>Nombre</Text>
           </View>
 
+          <TouchableOpacity
+            style={styles.switchProfileButton}
+            onPress={() => navigation.navigate('ProfileProfessional')}
+          >
+            <Ionicons name="briefcase" size={18} color={colors.white} />
+            <Text style={styles.switchProfileText}>Ir al perfil profesional</Text>
+          </TouchableOpacity>
+
           {/* Información Personal Section */}
           <TouchableOpacity
             style={styles.sectionHeader}
@@ -116,23 +233,25 @@ export const ProfileUserScreen = ({ navigation }) => {
             <View style={styles.sectionContent}>
               <Text style={styles.label}>Nombre Completo</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.fullName && styles.inputError]}
                 value={formData.fullName}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, fullName: text })
-                }
+                onChangeText={handleInputChange("fullName")}
                 placeholderTextColor="#999"
               />
+              {formErrors.fullName && (
+                <Text style={styles.errorText}>{formErrors.fullName}</Text>
+              )}
 
               <Text style={styles.label}>Ubicacion</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.location && styles.inputError]}
                 value={formData.location}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, location: text })
-                }
+                onChangeText={handleInputChange("location")}
                 placeholderTextColor="#999"
               />
+              {formErrors.location && (
+                <Text style={styles.errorText}>{formErrors.location}</Text>
+              )}
             </View>
           )}
 
@@ -153,26 +272,28 @@ export const ProfileUserScreen = ({ navigation }) => {
             <View style={styles.sectionContent}>
               <Text style={styles.label}>Telefono</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.phone && styles.inputError]}
                 value={formData.phone}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, phone: text })
-                }
+                onChangeText={handleInputChange("phone")}
                 keyboardType="phone-pad"
                 placeholderTextColor="#999"
               />
+              {formErrors.phone && (
+                <Text style={styles.errorText}>{formErrors.phone}</Text>
+              )}
 
               <Text style={styles.label}>Email</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.email && styles.inputError]}
                 value={formData.email}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, email: text })
-                }
+                onChangeText={handleInputChange("email")}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholderTextColor="#999"
               />
+              {formErrors.email && (
+                <Text style={styles.errorText}>{formErrors.email}</Text>
+              )}
             </View>
           )}
 
@@ -197,6 +318,9 @@ export const ProfileUserScreen = ({ navigation }) => {
               <Text style={styles.infoText}>
                 Puedes seleccionar múltiples opciones
               </Text>
+              {formErrors.paymentMethods && (
+                <Text style={styles.errorText}>{formErrors.paymentMethods}</Text>
+              )}
               <View style={styles.paymentMethodsContainer}>
                 {PAYMENT_METHODS_OPTIONS.map((method) => (
                   <TouchableOpacity
@@ -310,6 +434,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 32,
   },
+  switchProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    marginBottom: 24,
+  },
+  switchProfileText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '600',
+  },
   avatarCircle: {
     width: 120,
     height: 120,
@@ -387,10 +530,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
+  inputError: {
+    borderWidth: 1,
+    borderColor: colors.errorStrong,
+  },
   placeholderText: {
     color: colors.mutedText,
     fontSize: 14,
     fontStyle: "italic",
+  },
+  errorText: {
+    color: colors.errorStrong,
+    backgroundColor: colors.errorBackground,
+    borderColor: colors.errorBorder,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 13,
+    marginBottom: 8,
   },
   saveButton: {
     backgroundColor: colors.greenButton,

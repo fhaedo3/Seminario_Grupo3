@@ -23,6 +23,8 @@ export const professionals = [
       "Reparaciones en baños y cocinas",
       "Colocación de calefones",
     ],
+    distanceKm: 4,
+    tags: ["Popular", "Verificado"],
   },
   {
     id: 2,
@@ -47,6 +49,8 @@ export const professionals = [
       "Instalación de artefactos sanitarios",
       "Reparación de pérdidas",
     ],
+    distanceKm: 12,
+    tags: ["Matriculado"],
   },
   {
     id: 3,
@@ -71,5 +75,7 @@ export const professionals = [
       "Colocación de artefactos",
       "Reparación de pérdidas de gas",
     ],
+    distanceKm: 8,
+    tags: ["Popular"],
   },
 ];

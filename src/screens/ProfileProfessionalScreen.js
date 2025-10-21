@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Platform,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
@@ -35,6 +36,11 @@ const PAYMENT_METHODS = [
   { id: "transferencia", label: "Transferencia" },
 ];
 
+const NAME_REGEX = /^[a-zA-ZÁÉÍÓÚÑáéíóúñ\s'-]{3,60}$/;
+const LOCATION_REGEX = /^[a-zA-ZÁÉÍÓÚÑáéíóúñ0-9.,\s-]{3,80}$/;
+const PHONE_REGEX = /^\+?\d{7,15}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const ProfileProfessionalScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     fullName: "",
@@ -53,23 +59,50 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
   });
 
   const [expandedSection, setExpandedSection] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
   const toggleJob = (job) => {
-    setSelectedJobs((prev) =>
-      prev.includes(job) ? prev.filter((j) => j !== job) : [...prev, job]
-    );
+    setSelectedJobs((prev) => {
+      const updated = prev.includes(job)
+        ? prev.filter((j) => j !== job)
+        : [...prev, job];
+
+      if (updated.length > 0) {
+        setFormErrors((errors) => {
+          if (!errors.selectedJobs) {
+            return errors;
+          }
+          const { selectedJobs: _omit, ...rest } = errors;
+          return rest;
+        });
+      }
+
+      return updated;
+    });
   };
 
   const togglePaymentMethod = (methodId) => {
-    setSelectedPaymentMethods((prev) =>
-      prev.includes(methodId)
+    setSelectedPaymentMethods((prev) => {
+      const updated = prev.includes(methodId)
         ? prev.filter((m) => m !== methodId)
-        : [...prev, methodId]
-    );
+        : [...prev, methodId];
+
+      if (updated.length > 0) {
+        setFormErrors((errors) => {
+          if (!errors.selectedPaymentMethods) {
+            return errors;
+          }
+          const { selectedPaymentMethods: _omit, ...rest } = errors;
+          return rest;
+        });
+      }
+
+      return updated;
+    });
   };
 
   const handleScanFace = () => {
@@ -101,10 +134,104 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
     }
   };
 
+  const clearError = (field) => {
+    setFormErrors((prev) => {
+      if (!prev[field]) {
+        return prev;
+      }
+      const { [field]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const validateField = (field, rawValue) => {
+    const value = rawValue?.trim?.() ?? "";
+
+    switch (field) {
+      case "fullName":
+        if (!value) {
+          return "Ingresa tu nombre completo";
+        }
+        if (!NAME_REGEX.test(value)) {
+          return "Usa solo letras y entre 3 y 60 caracteres";
+        }
+        return null;
+      case "location":
+        if (!value) {
+          return "Ingresa tu ubicación";
+        }
+        if (!LOCATION_REGEX.test(value)) {
+          return "La ubicación contiene caracteres inválidos";
+        }
+        return null;
+      case "phone":
+        if (!value) {
+          return "Ingresa tu teléfono";
+        }
+        if (!PHONE_REGEX.test(value)) {
+          return "Ingresa un teléfono válido (7 a 15 dígitos)";
+        }
+        return null;
+      case "email":
+        if (!value) {
+          return "Ingresa tu correo electrónico";
+        }
+        if (!EMAIL_REGEX.test(value)) {
+          return "Ingresa un correo electrónico válido";
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleInputChange = (field) => (text) => {
+    setFormData((prev) => ({ ...prev, [field]: text }));
+
+    if (formErrors[field]) {
+      const fieldError = validateField(field, text);
+      if (fieldError) {
+        setFormErrors((prev) => ({ ...prev, [field]: fieldError }));
+        return;
+      }
+      clearError(field);
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    Object.entries(formData).forEach(([field, value]) => {
+      const fieldError = validateField(field, value);
+      if (fieldError) {
+        newErrors[field] = fieldError;
+      }
+    });
+
+    if (selectedJobs.length === 0) {
+      newErrors.selectedJobs = "Seleccioná al menos un oficio";
+    }
+
+    if (selectedPaymentMethods.length === 0) {
+      newErrors.selectedPaymentMethods = "Seleccioná al menos un método de cobro";
+    }
+
+    return newErrors;
+  };
+
   const handleSave = () => {
+    const newErrors = validateForm();
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrors(newErrors);
+      Alert.alert('Revisa los datos', 'Corregí los campos marcados antes de guardar.');
+      return;
+    }
+
     console.log("Guardando cambios:", formData);
     console.log("Trabajos seleccionados:", selectedJobs);
     console.log("Métodos de pago:", selectedPaymentMethods);
+    setFormErrors({});
     showSuccessToast('Datos guardados correctamente');
     // Aquí iría la lógica para guardar los cambios
   };
@@ -182,23 +309,25 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
             <View style={styles.sectionContent}>
               <Text style={styles.label}>Nombre Completo</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.fullName && styles.inputError]}
                 value={formData.fullName}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, fullName: text })
-                }
+                onChangeText={handleInputChange("fullName")}
                 placeholderTextColor="#999"
               />
+              {formErrors.fullName && (
+                <Text style={styles.errorText}>{formErrors.fullName}</Text>
+              )}
 
               <Text style={styles.label}>Ubicacion</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.location && styles.inputError]}
                 value={formData.location}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, location: text })
-                }
+                onChangeText={handleInputChange("location")}
                 placeholderTextColor="#999"
               />
+              {formErrors.location && (
+                <Text style={styles.errorText}>{formErrors.location}</Text>
+              )}
 
               <Text style={styles.label}>Trabajos / Oficios</Text>
               <View style={styles.checkboxContainer}>
@@ -226,6 +355,9 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 ))}
               </View>
+                {formErrors.selectedJobs && (
+                  <Text style={styles.errorText}>{formErrors.selectedJobs}</Text>
+                )}
             </View>
           )}
 
@@ -250,26 +382,28 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
             <View style={styles.sectionContent}>
               <Text style={styles.label}>Telefono</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.phone && styles.inputError]}
                 value={formData.phone}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, phone: text })
-                }
+                onChangeText={handleInputChange("phone")}
                 keyboardType="phone-pad"
                 placeholderTextColor="#999"
               />
+              {formErrors.phone && (
+                <Text style={styles.errorText}>{formErrors.phone}</Text>
+              )}
 
               <Text style={styles.label}>Email</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.email && styles.inputError]}
                 value={formData.email}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, email: text })
-                }
+                onChangeText={handleInputChange("email")}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholderTextColor="#999"
               />
+              {formErrors.email && (
+                <Text style={styles.errorText}>{formErrors.email}</Text>
+              )}
             </View>
           )}
 
@@ -317,6 +451,9 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 ))}
               </View>
+              {formErrors.selectedPaymentMethods && (
+                <Text style={styles.errorText}>{formErrors.selectedPaymentMethods}</Text>
+              )}
             </View>
           )}
 
@@ -584,10 +721,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
+  inputError: {
+    borderWidth: 1,
+    borderColor: colors.errorStrong,
+  },
   placeholderText: {
     color: colors.mutedText,
     fontSize: 14,
     fontStyle: "italic",
+  },
+  errorText: {
+    color: colors.errorStrong,
+    backgroundColor: colors.errorBackground,
+    borderColor: colors.errorBorder,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 13,
+    marginBottom: 8,
   },
   saveButton: {
     backgroundColor: colors.greenButton,

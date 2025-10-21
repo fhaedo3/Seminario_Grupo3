@@ -1,19 +1,12 @@
 import React from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Formik } from 'formik';
-import * as Yup from 'yup';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-
-const loginSchema = Yup.object().shape({
-  username: Yup.string().required('El usuario es obligatorio'),
-  password: Yup.string().min(6, 'La contraseña debe tener al menos 6 caracteres').required('La contraseña es obligatoria')
-});
 
 export const LoginForm = ({ onSubmit }) => {
   return (
     <Formik
-      validationSchema={loginSchema}
       initialValues={{ username: '', password: '' }}
       onSubmit={(values, helpers) => {
         onSubmit?.(values);

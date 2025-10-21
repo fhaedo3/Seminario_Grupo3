@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,28 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
-export const FilterModal = ({ visible, onClose, onApplyFilters }) => {
-  const [selectedDistance, setSelectedDistance] = useState('5-10 km');
-  const [selectedProfession, setSelectedProfession] = useState('Plomero');
-  const [selectedOther, setSelectedOther] = useState('Popular'); // fixed default
+const DEFAULT_DISTANCE = 'Cualquier distancia';
+const DEFAULT_PROFESSION = 'Todas';
+const DEFAULT_OTHER = 'Todos';
 
-  const distances = ['< 5 km', '5-10 km', '10-25 km'];
-  const professions = ['Plomero', 'Electricista', 'Gasista'];
-  const others = ['Popular', 'Matriculado', 'Verificado'];
+export const FilterModal = ({ visible, onClose, onApplyFilters, initialFilters }) => {
+  const [selectedDistance, setSelectedDistance] = useState(DEFAULT_DISTANCE);
+  const [selectedProfession, setSelectedProfession] = useState(DEFAULT_PROFESSION);
+  const [selectedOther, setSelectedOther] = useState(DEFAULT_OTHER);
+
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    setSelectedDistance(initialFilters?.distance ?? DEFAULT_DISTANCE);
+    setSelectedProfession(initialFilters?.profession ?? DEFAULT_PROFESSION);
+    setSelectedOther(initialFilters?.other ?? DEFAULT_OTHER);
+  }, [visible, initialFilters]);
+
+  const distances = [DEFAULT_DISTANCE, '< 5 km', '5-10 km', '10-25 km'];
+  const professions = [DEFAULT_PROFESSION, 'Plomero', 'Electricista', 'Gasista'];
+  const others = [DEFAULT_OTHER, 'Popular', 'Matriculado', 'Verificado'];
 
   const handleApply = () => {
     onApplyFilters({

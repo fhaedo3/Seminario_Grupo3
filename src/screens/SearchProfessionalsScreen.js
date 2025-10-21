@@ -15,7 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { professionals } from "../assets/data/plomerosdata";
-import { FilterModal } from '../components/ProfessionalsFilters'; // Adjust path
+import { FilterModal } from '../components/ProfessionalsFilters';
 import { BackButton } from '../components/BackButton';
 import { BottomNav } from '../components/BottomNav';
 
@@ -33,7 +33,11 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
   const [searchTerm, setSearchTerm] = useState("Plomero");
   const [favorites, setFavorites] = useState(new Set());
   const [filterModalVisible, setFilterModalVisible] = useState(false); 
-  const [filters, setFilters] = useState(null);
+  const [filters, setFilters] = useState({
+    distance: 'Cualquier distancia',
+    profession: 'Todas',
+    other: 'Todos',
+  });
 
   const toggleFavorite = (id) => {
     const newFavorites = new Set(favorites);
@@ -45,11 +49,36 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
     setFavorites(newFavorites);
   };
 
+  const matchesDistanceFilter = (distanceKm, selectedRange) => {
+    if (selectedRange === 'Cualquier distancia') {
+      return true;
+    }
+
+    if (typeof distanceKm !== 'number') {
+      return false;
+    }
+
+    switch (selectedRange) {
+      case '< 5 km':
+        return distanceKm < 5;
+      case '5-10 km':
+        return distanceKm >= 5 && distanceKm <= 10;
+      case '10-25 km':
+        return distanceKm > 10 && distanceKm <= 25;
+      default:
+        return true;
+    }
+  };
+
   const filteredProfessionals = professionals.filter((prof) => {
     const term = (searchTerm || '').toLowerCase();
     const matchesTerm = prof.name?.toLowerCase().includes(term) || prof.profession?.toLowerCase().includes(term);
-    const matchesProfession = filters?.profession ? prof.profession === filters.profession : true;
-    return matchesTerm && matchesProfession;
+
+    const matchesProfession = filters.profession === 'Todas' ? true : prof.profession === filters.profession;
+    const matchesDistance = matchesDistanceFilter(prof.distanceKm ?? 0, filters.distance);
+    const matchesOther = filters.other === 'Todos' ? true : prof.tags?.includes(filters.other);
+
+    return matchesTerm && matchesProfession && matchesDistance && matchesOther;
   });
 
   return (
@@ -160,13 +189,19 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
           ))}
         </ScrollView>
 
-        {/* Bottom Navigation */}
-        
+        <BottomNav
+          navigation={navigation}
+          homeRoute="Homepage"
+          searchRoute="SearchProfessionals"
+          jobsRoute="MyJobs"
+          profileRoute="ProfileUser"
+        />
       </KeyboardAvoidingView>
       <FilterModal
         visible={filterModalVisible}
         onClose={() => setFilterModalVisible(false)}
         onApplyFilters={handleApplyFilters}
+        initialFilters={filters}
       />
     </LinearGradient>
   );
