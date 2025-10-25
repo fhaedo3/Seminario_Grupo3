@@ -60,6 +60,10 @@ export const MyJobsScreen = ({ navigation }) => {
     });
   };
 
+  const handleOpenReviewScreen = (job) => {
+    navigation.navigate('ReviewProfessional', job)
+  }
+
   return (
     <LinearGradient colors={[colors.primaryBlue, colors.secondaryBlue]} style={styles.background}>
       <StatusBar style="light" />
@@ -80,7 +84,7 @@ export const MyJobsScreen = ({ navigation }) => {
           {jobs.map((job) => {
             const status = statusStyles[job.status] ?? statusStyles['En curso'];
             return (
-              <TouchableOpacity key={job.id} style={styles.card} onPress={() => handleOpenChat(job)}>
+              <View key={job.id} style={styles.card}>
                 <View style={styles.cardHeader}>
                   <Image source={job.professional.avatar} style={styles.avatar} />
                   <View style={styles.cardTitleArea}>
@@ -107,11 +111,22 @@ export const MyJobsScreen = ({ navigation }) => {
                   </View>
                   <Text style={styles.lastMessage}>{job.lastMessage}</Text>
                 </View>
-                <View style={styles.cardFooter}>
-                  <Text style={styles.cardFooterText}>Tocar para abrir el chat</Text>
-                  <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
-                </View>
-              </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleOpenChat(job)}>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardFooterText}>Tocar para abrir el chat</Text>
+                    <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
+                  </View>
+                </TouchableOpacity>
+                { 
+                (job.status == 'Finalizado') &&
+                <TouchableOpacity onPress={() => handleOpenReviewScreen(job)}>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardFooterText}>Tocar para calificar</Text>
+                    <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
+                  </View>
+                </TouchableOpacity>
+                }
+              </View>
             );
           })}
         </ScrollView>
@@ -144,7 +159,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: colors.white,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '700',
   },
   headerSubtitle: {
