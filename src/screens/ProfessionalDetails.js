@@ -69,7 +69,9 @@ export const ProfessionalDetails = ({ route, navigation }) => {
         {/* Botón Contratar */}
         <TouchableOpacity
           style={styles.button}
-          onPress={() => alert('Funcionalidad próxima: contactar profesional')}
+          onPress={() => navigation.navigate('Schedule', {
+            professional: professional
+          })}
         >
           <Text style={styles.buttonText}>Contratar Ahora!</Text>
         </TouchableOpacity>

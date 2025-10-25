@@ -14,6 +14,8 @@ import { ChatScreen } from './src/screens/ChatScreen';
 import { ProfileUserScreen } from './src/screens/ProfileUserScreen';
 import { ProfileProfessionalScreen } from './src/screens/ProfileProfessionalScreen';
 import { ProfessionalDetails } from './src/screens/ProfessionalDetails';
+import { ScheduleScreen } from './src/screens/ScheduleScreen';
+import { PaymentScreen } from './src/screens/PaymentScreen';
 
 
 const Stack = createStackNavigator();
@@ -54,6 +56,8 @@ export default function App() {
           <Stack.Screen name="ProfileUser" component={ProfileUserScreen} />
           <Stack.Screen name="ProfileProfessional" component={ProfileProfessionalScreen}options={{ headerShown: false }} />
           <Stack.Screen name="ProfessionalDetails" component={ProfessionalDetails} options={{ headerShown: false }}/>
+          <Stack.Screen name="Schedule" component={ScheduleScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: false }}/>
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
