@@ -7,35 +7,35 @@ export const authApi = {
 };
 
 export const usersApi = {
-  updateProfile: (token, payload) => request('/api/users/me', { method: 'PUT', token, body: payload }),
+  updateProfile: (token, payload) => request('/users/me', { method: 'PUT', token, body: payload }),
 };
 
 export const professionalsApi = {
-  search: (params = {}) => request('/api/professionals', { params }),
-  getById: (id) => request(`/api/professionals/${id}`, { method: 'GET' }),
-  getByUserId: (userId, token) => request(`/api/professionals/by-user/${userId}`, { method: 'GET', token }),
-  create: (token, payload) => request('/api/professionals', { method: 'POST', token, body: payload }),
-  update: (token, id, payload) => request(`/api/professionals/${id}`, { method: 'PUT', token, body: payload }),
+  search: (params = {}) => request('/professionals', { params }),
+  getById: (id) => request(`/professionals/${id}`, { method: 'GET' }),
+  getByUserId: (userId, token) => request(`/professionals/by-user/${userId}`, { method: 'GET', token }),
+  create: (token, payload) => request('/professionals', { method: 'POST', token, body: payload }),
+  update: (token, id, payload) => request(`/professionals/${id}`, { method: 'PUT', token, body: payload }),
 };
 
 export const reviewsApi = {
   listByProfessional: (professionalId, params = {}) =>
-    request('/api/reviews', { params: { professionalId, ...params } }),
+    request('/reviews', { params: { professionalId, ...params } }),
 };
 
 export const serviceOrdersApi = {
-  create: (token, payload) => request('/api/service-orders', { method: 'POST', token, body: payload }),
-  getById: (token, id) => request(`/api/service-orders/${id}`, { method: 'GET', token }),
-  listMine: (token, params = {}) => request('/api/service-orders/me', { method: 'GET', token, params }),
+  create: (token, payload) => request('/service-orders', { method: 'POST', token, body: payload }),
+  getById: (token, id) => request(`/service-orders/${id}`, { method: 'GET', token }),
+  listMine: (token, params = {}) => request('/service-orders/me', { method: 'GET', token, params }),
 };
 
 export const messagesApi = {
   list: (token, serviceOrderId, params = {}) =>
-    request(`/api/service-orders/${serviceOrderId}/messages`, { method: 'GET', token, params }),
+    request(`/service-orders/${serviceOrderId}/messages`, { method: 'GET', token, params }),
   send: (token, serviceOrderId, payload) =>
-    request(`/api/service-orders/${serviceOrderId}/messages`, { method: 'POST', token, body: payload }),
+    request(`/service-orders/${serviceOrderId}/messages`, { method: 'POST', token, body: payload }),
 };
 
 export const paymentsApi = {
-  create: (token, payload) => request('/api/payments', { method: 'POST', token, body: payload }),
+  create: (token, payload) => request('/payments', { method: 'POST', token, body: payload }),
 };
