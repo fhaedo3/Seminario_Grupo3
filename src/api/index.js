@@ -1,9 +1,9 @@
 import { request } from './client';
 
 export const authApi = {
-  login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
-  register: (payload) => request('/auth/register', { method: 'POST', body: payload }),
-  me: (token) => request('/auth/me', { method: 'GET', token }),
+  login: (payload) => request('/api/v1/auth/login', { method: 'POST', body: payload }),
+  register: (payload) => request('/api/v1/auth/register', { method: 'POST', body: payload }),
+  me: (token) => request('/api/v1/auth/me', { method: 'GET', token }),
 };
 
 export const usersApi = {
@@ -11,16 +11,16 @@ export const usersApi = {
 };
 
 export const professionalsApi = {
-  search: (params = {}) => request('/api/professionals', { params }),
-  getById: (id) => request(`/api/professionals/${id}`, { method: 'GET' }),
-  getByUserId: (userId, token) => request(`/api/professionals/by-user/${userId}`, { method: 'GET', token }),
-  create: (token, payload) => request('/api/professionals', { method: 'POST', token, body: payload }),
-  update: (token, id, payload) => request(`/api/professionals/${id}`, { method: 'PUT', token, body: payload }),
+  search: (params = {}) => request('/api/v1/professionals', { params }),
+  getById: (id) => request(`/api/v1/professionals/${id}`, { method: 'GET' }),
+  getByUserId: (userId, token) => request(`/api/v1/professionals/by-user/${userId}`, { method: 'GET', token }),
+  create: (token, payload) => request('/api/v1/professionals', { method: 'POST', token, body: payload }),
+  update: (token, id, payload) => request(`/api/v1/professionals/${id}`, { method: 'PUT', token, body: payload }),
 };
 
 export const reviewsApi = {
   listByProfessional: (professionalId, params = {}) =>
-    request('/api/reviews', { params: { professionalId, ...params } }),
+    request('/api/v1/reviews', { params: { professionalId, ...params } }),
 };
 
 export const serviceOrdersApi = {
@@ -37,5 +37,5 @@ export const messagesApi = {
 };
 
 export const paymentsApi = {
-  create: (token, payload) => request('/api/payments', { method: 'POST', token, body: payload }),
+  create: (token, payload) => request('/api/v1/payments', { method: 'POST', token, body: payload }),
 };

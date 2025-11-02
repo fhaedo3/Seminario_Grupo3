@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -26,47 +26,58 @@ const LoadingView = () => (
   </View>
 );
 
-const AuthStack = () => (
-  <Stack.Navigator
-    initialRouteName="Login"
-    screenOptions={{
-      headerShown: false,
-    }}
-  >
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Register" component={RegisterScreen} />
-  </Stack.Navigator>
-);
-
-const MainStack = () => (
-  <Stack.Navigator
-    initialRouteName="Homepage"
-    screenOptions={{
-      headerShown: false,
-    }}
-  >
-    <Stack.Screen name="Homepage" component={Homepage} />
-    <Stack.Screen name="SearchProfessionals" component={SearchProfessionalsScreen} />
-    <Stack.Screen name="MyJobs" component={MyJobsScreen} />
-    <Stack.Screen name="Chat" component={ChatScreen} />
-    <Stack.Screen name="ProfileUser" component={ProfileUserScreen} />
-    <Stack.Screen name="ProfileProfessional" component={ProfileProfessionalScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="ProfessionalDetails" component={ProfessionalDetails} options={{ headerShown: false }} />
-    <Stack.Screen name="HireForm" component={HireFormScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: false }} />
-  </Stack.Navigator>
-);
-
 const RootNavigator = () => {
   const { isAuthenticated, initializing } = useAuth();
+  const navigationRef = useRef();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (!isReady || initializing) return;
+
+    const targetRoute = isAuthenticated ? 'Homepage' : 'Login';
+    
+    if (navigationRef.current) {
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: targetRoute }],
+      });
+    }
+  }, [isAuthenticated, isReady, initializing]);
 
   if (initializing) {
     return <LoadingView />;
   }
 
+  const getInitialRouteName = () => {
+    return isAuthenticated ? 'Homepage' : 'Login';
+  };
+
   return (
-    <NavigationContainer>
-      {isAuthenticated ? <MainStack /> : <AuthStack />}
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => setIsReady(true)}
+    >
+      <Stack.Navigator
+        initialRouteName={getInitialRouteName()}
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        {/* Pantallas de autenticación */}
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        
+        {/* Pantallas principales */}
+        <Stack.Screen name="Homepage" component={Homepage} />
+        <Stack.Screen name="SearchProfessionals" component={SearchProfessionalsScreen} />
+        <Stack.Screen name="MyJobs" component={MyJobsScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
+        <Stack.Screen name="ProfileUser" component={ProfileUserScreen} />
+        <Stack.Screen name="ProfileProfessional" component={ProfileProfessionalScreen} />
+        <Stack.Screen name="ProfessionalDetails" component={ProfessionalDetails} />
+        <Stack.Screen name="HireForm" component={HireFormScreen} />
+        <Stack.Screen name="Payment" component={PaymentScreen} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };

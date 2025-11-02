@@ -5,7 +5,6 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
-import { BackButton } from '../components/BackButton';
 import { professionalsApi } from '../api';
 import { useAuth } from '../context/AuthContext';
 
@@ -94,9 +93,6 @@ export const Homepage = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <View style={styles.headerTopRow}>
-              <BackButton navigation={navigation} fallbackRoute="Login" />
-            </View>
             <Text style={styles.greeting}>Hola, {userName}!</Text>
             <Text style={styles.headline}>Encontra profesionales de confianza en minutos</Text>
             <Text style={styles.subheadline}>
@@ -204,7 +200,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 220, flexGrow: 1 },
   header: { paddingHorizontal: 24, marginBottom: 24 },
-  headerTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   greeting: { color: colors.white, fontSize: 16, opacity: 0.85, marginBottom: 6 },
   headline: { color: colors.white, fontSize: 28, fontWeight: '700', marginBottom: 10 },
   subheadline: { color: colors.white, opacity: 0.8, lineHeight: 20 },

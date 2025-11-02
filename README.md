@@ -43,15 +43,32 @@ npm run ios      # iOS Simulator (solo macOS)
 
 ```
 ├── App.js                      # Navegación principal
+├── backend/                    # Backend API (submódulo)
 ├── src/
 │   ├── screens/
 │   │   ├── LoginScreen.js      # Pantalla de inicio de sesión
-│   │   └── RegisterScreen.js   # Pantalla de registro
+│   │   ├── RegisterScreen.js   # Pantalla de registro
+│   │   ├── Homepage.js         # Pantalla principal
+│   │   ├── SearchProfessionalsScreen.js  # Búsqueda de profesionales
+│   │   ├── MyJobsScreen.js     # Mis trabajos
+│   │   ├── ChatScreen.js       # Chat con profesionales
+│   │   ├── ProfileUserScreen.js # Perfil de usuario
+│   │   ├── ProfileProfessionalScreen.js # Perfil de profesional
+│   │   └── ProfessionalDetails.js # Detalles del profesional
 │   ├── components/
 │   │   ├── LoginForm.js        # Formulario de login
-│   │   └── RegisterForm.js     # Formulario de registro
-│   └── theme/
-│       └── colors.js           # Paleta de colores
+│   │   ├── RegisterForm.js     # Formulario de registro
+│   │   ├── BottomNav.js        # Navegación inferior
+│   │   ├── BackButton.js       # Botón de volver
+│   │   └── ProfessionalsFilters.js # Filtros de búsqueda
+│   ├── theme/
+│   │   └── colors.js           # Paleta de colores
+│   ├── assets/
+│   │   ├── data/
+│   │   │   └── plomerosdata.js # Datos mock de profesionales
+│   │   └── images/             # Imágenes de la aplicación
+│   └── utils/
+│       └── notifications.js    # Utilidades para notificaciones
 └── app.json                    # Configuración de Expo
 ```
 
@@ -63,8 +80,20 @@ npm run ios      # iOS Simulator (solo macOS)
 - **SDK moderno**: Expo 54 con React 19
 - **Navegación**: React Navigation con stack navigator
 
-## 🔧 Personalización
+## 🔧 Backend y Personalización
 
+### Configuración del Backend
+El backend está incluido como submódulo de Git. Para inicializarlo:
+
+```bash
+# Clonar con submódulos (primera vez)
+git clone --recursive https://github.com/fhaedo3/Seminario_Grupo3
+
+# O si ya clonaste el repo, inicializar submódulos
+git submodule update --init --recursive
+```
+
+### Personalización
 Para conectar con tu backend:
 1. Edita `handleLogin` en `LoginScreen.js` 
 2. Edita `handleRegister` en `RegisterScreen.js`
