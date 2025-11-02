@@ -1,9 +1,9 @@
 import { request } from './client';
 
 export const authApi = {
-  login: (payload) => request('/api/v1/auth/login', { method: 'POST', body: payload }),
-  register: (payload) => request('/api/v1/auth/register', { method: 'POST', body: payload }),
-  me: (token) => request('/api/v1/auth/me', { method: 'GET', token }),
+  login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
+  register: (payload) => request('/auth/register', { method: 'POST', body: payload }),
+  me: (token) => request('/auth/me', { method: 'GET', token }),
 };
 
 export const usersApi = {
