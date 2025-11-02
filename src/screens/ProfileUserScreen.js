@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
@@ -16,6 +17,8 @@ import { colors } from "../theme/colors";
 import { BottomNav } from '../components/BottomNav';
 import { BackButton } from '../components/BackButton';
 import { showSuccessToast } from '../utils/notifications';
+import { useAuth } from '../context/AuthContext';
+import { usersApi } from '../api';
 
 const PAYMENT_METHODS_OPTIONS = [
   { id: "efectivo", label: "Efectivo", icon: "cash" },
@@ -30,7 +33,24 @@ const LOCATION_REGEX = /^[a-zA-ZÁÉÍÓÚÑáéíóúñ0-9.,\s-]{3,80}$/;
 const PHONE_REGEX = /^\+?\d{7,15}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const getApiErrorMessage = (error, fallbackMessage) => {
+  const payload = error?.payload;
+  if (payload) {
+    if (Array.isArray(payload.errors) && payload.errors.length > 0) {
+      return payload.errors.join("\n");
+    }
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      return payload.message;
+    }
+    if (typeof payload.error === "string" && payload.error.trim()) {
+      return payload.error;
+    }
+  }
+  return error?.message ?? fallbackMessage;
+};
+
 export const ProfileUserScreen = ({ navigation }) => {
+  const { user, token, logout, refreshProfile } = useAuth();
   const [formData, setFormData] = useState({
     fullName: "",
     location: "",
@@ -39,8 +59,24 @@ export const ProfileUserScreen = ({ navigation }) => {
   });
 
   const [paymentMethods, setPaymentMethods] = useState([]);
-  const [expandedSection, setExpandedSection] = useState(null);
+  const [expandedSection, setExpandedSection] = useState("personal");
   const [formErrors, setFormErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setFormData({
+      fullName: user.fullName || "",
+      location: user.location || "",
+      phone: user.phone || "",
+      email: user.email || "",
+    });
+
+    setPaymentMethods(Array.isArray(user.preferredPaymentMethods) ? user.preferredPaymentMethods : []);
+  }, [user]);
 
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -53,13 +89,7 @@ export const ProfileUserScreen = ({ navigation }) => {
         : [...prev, methodId];
 
       if (updated.length > 0) {
-        setFormErrors((errors) => {
-          if (!errors.paymentMethods) {
-            return errors;
-          }
-          const { paymentMethods: _omit, ...rest } = errors;
-          return rest;
-        });
+        clearError("paymentMethods");
       }
 
       return updated;
@@ -147,7 +177,7 @@ export const ProfileUserScreen = ({ navigation }) => {
     return newErrors;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors = validateForm();
 
     if (Object.keys(newErrors).length > 0) {
@@ -156,11 +186,29 @@ export const ProfileUserScreen = ({ navigation }) => {
       return;
     }
 
-    console.log("Guardando cambios:", formData);
-    console.log("Métodos de pago:", paymentMethods);
-    setFormErrors({});
-    showSuccessToast('Datos guardados correctamente');
-    // Aquí iría la lógica para guardar los cambios
+    if (!token) {
+      Alert.alert('Sesión expirada', 'Volvé a iniciar sesión para actualizar tus datos.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await usersApi.updateProfile(token, {
+        fullName: formData.fullName.trim(),
+        location: formData.location.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
+        preferredPaymentMethods: paymentMethods,
+      });
+      await refreshProfile();
+      setFormErrors({});
+      showSuccessToast('Datos guardados correctamente');
+    } catch (error) {
+      console.error('Error updating profile', error);
+      Alert.alert('No se pudo guardar', getApiErrorMessage(error, 'Intentá nuevamente más tarde.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -177,12 +225,7 @@ export const ProfileUserScreen = ({ navigation }) => {
             <Text style={styles.headerTitle}>Mi Perfil</Text>
             <TouchableOpacity
               style={styles.logoutButton}
-              onPress={() =>
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Login' }],
-                })
-              }
+              onPress={logout}
             >
               <Ionicons name="log-out-outline" size={20} color={colors.white} />
               <Text style={styles.logoutText}>Salir</Text>
@@ -368,8 +411,16 @@ export const ProfileUserScreen = ({ navigation }) => {
           )}
 
           {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
 
@@ -557,6 +608,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 24,
     marginBottom: 20,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveButtonText: {
     color: colors.white,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
+import { useAuth } from '../context/AuthContext';
+import { paymentsApi } from '../api';
 
 export const PaymentScreen = ({ route, navigation }) => {
   const { hireSummary } = route.params;
@@ -27,6 +29,23 @@ export const PaymentScreen = ({ route, navigation }) => {
   const [cardName, setCardName] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cvv, setCvv] = useState('');
+  const { token } = useAuth();
+
+  const serviceOrderId = hireSummary?.serviceOrder?.id;
+  const professionalId = hireSummary?.serviceOrder?.professionalId || hireSummary?.professional?.id;
+
+  const paymentMethodType = useMemo(() => {
+    switch (selectedPaymentMethod) {
+      case 'card':
+        return 'CARD';
+      case 'mercadopago':
+        return 'MERCADO_PAGO';
+      case 'transfer':
+        return 'BANK_TRANSFER';
+      default:
+        return 'CARD';
+    }
+  }, [selectedPaymentMethod]);
 
   // Formatear número de tarjeta (agregar espacios cada 4 dígitos)
   const formatCardNumber = (text) => {
@@ -44,7 +63,17 @@ export const PaymentScreen = ({ route, navigation }) => {
     return cleaned;
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
+    if (!token) {
+      Alert.alert('Debes iniciar sesión', 'Iniciá sesión para completar el pago.');
+      return;
+    }
+
+    if (!serviceOrderId) {
+      Alert.alert('Falta información', 'No encontramos la solicitud de servicio asociada.');
+      return;
+    }
+
     // Validaciones básicas
     if (selectedPaymentMethod === 'card') {
       if (!cardNumber || !cardName || !expiryDate || !cvv) {
@@ -61,16 +90,25 @@ export const PaymentScreen = ({ route, navigation }) => {
       }
     }
 
-    // Simular procesamiento de pago
     setIsProcessing(true);
-    
-    setTimeout(() => {
-      setIsProcessing(false);
-      
-      // Mostrar confirmación y navegar
+    try {
+      const payload = {
+        serviceOrderId,
+        amount: Number(hireSummary?.totalAmount) || 0,
+        currency: 'ARS',
+        method: paymentMethodType,
+        professionalId,
+        cardNumber: selectedPaymentMethod === 'card' ? cardNumber.replace(/\s/g, '') : undefined,
+        cardHolderName: selectedPaymentMethod === 'card' ? cardName : undefined,
+        cardExpiry: selectedPaymentMethod === 'card' ? expiryDate : undefined,
+        cardCvv: selectedPaymentMethod === 'card' ? cvv : undefined,
+      };
+
+      await paymentsApi.create(token, payload);
+
       Alert.alert(
         '¡Pago exitoso!',
-        `Tu contratación de ${hireSummary.professional.name} ha sido confirmada. El profesional se pondrá en contacto contigo pronto.`,
+        `Tu contratación de ${(hireSummary.professional.displayName || hireSummary.professional.name)} ha sido confirmada. El profesional se pondrá en contacto contigo pronto.`,
         [
           {
             text: 'Ver mis trabajos',
@@ -83,7 +121,12 @@ export const PaymentScreen = ({ route, navigation }) => {
           },
         ]
       );
-    }, 2000);
+    } catch (error) {
+      console.error('Payment failed', error);
+      Alert.alert('Error', error?.message ?? 'No se pudo procesar el pago.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const paymentMethods = [
@@ -128,7 +171,7 @@ export const PaymentScreen = ({ route, navigation }) => {
             
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Profesional:</Text>
-              <Text style={styles.summaryValue}>{hireSummary.professional.name}</Text>
+              <Text style={styles.summaryValue}>{hireSummary.professional.displayName || hireSummary.professional.name}</Text>
             </View>
             
             <View style={styles.summaryRow}>

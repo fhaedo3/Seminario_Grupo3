@@ -1,62 +1,103 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform, Image, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
 import { BackButton } from '../components/BackButton';
-
-const jobs = [
-  {
-    id: 'job-1',
-    professional: {
-      name: 'Jonathan Leguizamón',
-      profession: 'Plomero',
-      avatar: require('../assets/images/plomero3.png'),
-    },
-    issue: 'Gotera en techo de cocina',
-    status: 'En curso',
-    scheduledAt: '21 Oct · 18:00',
-    lastMessage: 'Perfecto, llevo los materiales que necesitamos',
-  },
-  {
-    id: 'job-2',
-    professional: {
-      name: 'Gustavo Román',
-      profession: 'Gasista',
-      avatar: require('../assets/images/plomero2.png'),
-    },
-    issue: 'Revision de instalacion de gas',
-    status: 'Presupuesto enviado',
-    scheduledAt: 'A coordinar',
-    lastMessage: 'Te mandé el presupuesto estimado, avisame cualquier duda',
-  },
-  {
-    id: 'job-3',
-    professional: {
-      name: 'Manolo Cáceres',
-      profession: 'Plomero',
-      avatar: require('../assets/images/plomero1.png'),
-    },
-    issue: 'Cambio de griferia del bano',
-    status: 'Finalizado',
-    scheduledAt: '16 Oct · 10:30',
-    lastMessage: 'Gracias por tu trabajo, quedó impecable',
-  },
-];
+import { useAuth } from '../context/AuthContext';
+import { serviceOrdersApi, professionalsApi } from '../api';
 
 const statusStyles = {
-  'En curso': { label: 'En curso', color: '#FCD34D', icon: 'time-outline' },
-  'Presupuesto enviado': { label: 'Presupuesto enviado', color: '#60A5FA', icon: 'document-text-outline' },
-  Finalizado: { label: 'Finalizado', color: colors.greenButton, icon: 'checkmark-done-outline' },
+  PENDING: { label: 'Pendiente', color: '#FCD34D', icon: 'time-outline' },
+  PROPOSAL_SENT: { label: 'Presupuesto enviado', color: '#60A5FA', icon: 'document-text-outline' },
+  SCHEDULED: { label: 'Agendado', color: '#38bdf8', icon: 'calendar-outline' },
+  IN_PROGRESS: { label: 'En curso', color: '#facc15', icon: 'construct-outline' },
+  COMPLETED: { label: 'Finalizado', color: colors.greenButton, icon: 'checkmark-done-outline' },
+  CANCELLED: { label: 'Cancelado', color: colors.error, icon: 'close-circle-outline' },
 };
 
 export const MyJobsScreen = ({ navigation }) => {
+  const { token } = useAuth();
+  const [serviceOrders, setServiceOrders] = useState([]);
+  const [professionalsMap, setProfessionalsMap] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const formattedJobs = useMemo(() => {
+    return serviceOrders.map((order) => {
+      const professional = professionalsMap[order.professionalId];
+      return {
+        ...order,
+        professional,
+      };
+    });
+  }, [professionalsMap, serviceOrders]);
+
+  const formatSchedule = (dateString) => {
+    if (!dateString) {
+      return 'A coordinar';
+    }
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return 'A coordinar';
+    }
+    const dateText = date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+    const timeText = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    return `${dateText} · ${timeText}`;
+  };
+
+  const loadJobs = useCallback(async () => {
+    if (!token) {
+      setServiceOrders([]);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const response = await serviceOrdersApi.listMine(token, { page: 0, size: 20 });
+      const orders = Array.isArray(response?.content) ? response.content : [];
+      setServiceOrders(orders);
+
+      const professionalIds = Array.from(new Set(orders.map((order) => order.professionalId).filter(Boolean)));
+      const entries = await Promise.all(
+        professionalIds.map(async (id) => {
+          try {
+            const profile = await professionalsApi.getById(id);
+            return [id, profile];
+          } catch (error) {
+            console.warn('No se pudo cargar el profesional', id, error);
+            return [id, null];
+          }
+        })
+      );
+      setProfessionalsMap(Object.fromEntries(entries));
+    } catch (err) {
+      console.error('Error fetching jobs', err);
+      setError(err?.message ?? 'No se pudieron cargar tus trabajos.');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadJobs();
+    }, [loadJobs])
+  );
+
   const handleOpenChat = (job) => {
     navigation.navigate('Chat', {
-      professional: job.professional,
-      jobSummary: job.issue,
+      professional: {
+        id: job.professional?.id,
+        name: job.professional?.displayName || job.professional?.name,
+        profession: job.professional?.profession,
+        avatar: null,
+      },
+      jobSummary: job.serviceType,
+      serviceOrderId: job.id,
     });
   };
 
@@ -77,43 +118,57 @@ export const MyJobsScreen = ({ navigation }) => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         >
-          {jobs.map((job) => {
-            const status = statusStyles[job.status] ?? statusStyles['En curso'];
-            return (
-              <TouchableOpacity key={job.id} style={styles.card} onPress={() => handleOpenChat(job)}>
-                <View style={styles.cardHeader}>
-                  <Image source={job.professional.avatar} style={styles.avatar} />
-                  <View style={styles.cardTitleArea}>
-                    <Text style={styles.professionalName}>{job.professional.name}</Text>
-                    <Text style={styles.professionalProfession}>{job.professional.profession}</Text>
-                  </View>
-                  <View style={[styles.statusPill, { backgroundColor: status.color }]}>
-                    <Ionicons name={status.icon} size={14} color={colors.white} style={styles.statusIcon} />
-                    <Text style={styles.statusText}>{status.label}</Text>
-                  </View>
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={styles.issueLabel}>Trabajo</Text>
-                  <Text style={styles.issueText}>{job.issue}</Text>
-                  <View style={styles.metaRow}>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="calendar-outline" size={16} color={colors.white} />
-                      <Text style={styles.metaText}>{job.scheduledAt}</Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={colors.white} />
+              <Text style={styles.loadingText}>Cargando tus trabajos...</Text>
+            </View>
+          ) : formattedJobs.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="briefcase-outline" size={40} color={colors.white} />
+              <Text style={styles.emptyTitle}>Todavía no tenés trabajos</Text>
+              <Text style={styles.emptySubtitle}>Contratá un profesional para ver tus solicitudes aquí.</Text>
+            </View>
+          ) : (
+            formattedJobs.map((job) => {
+              const status = statusStyles[job.status] ?? statusStyles.PENDING;
+              return (
+                <TouchableOpacity key={job.id} style={styles.card} onPress={() => handleOpenChat(job)}>
+                  <View style={styles.cardHeader}>
+                    <Image source={require('../assets/images/plomero1.png')} style={styles.avatar} />
+                    <View style={styles.cardTitleArea}>
+                      <Text style={styles.professionalName}>{job.professional?.displayName || job.professional?.name || 'Profesional'}</Text>
+                      <Text style={styles.professionalProfession}>{job.professional?.profession || 'Servicio'}</Text>
                     </View>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.white} />
-                      <Text style={styles.metaText}>Último mensaje</Text>
+                    <View style={[styles.statusPill, { backgroundColor: status.color }]}>
+                      <Ionicons name={status.icon} size={14} color={colors.white} style={styles.statusIcon} />
+                      <Text style={styles.statusText}>{status.label}</Text>
                     </View>
                   </View>
-                  <Text style={styles.lastMessage}>{job.lastMessage}</Text>
-                </View>
-                <View style={styles.cardFooter}>
-                  <Text style={styles.cardFooterText}>Tocar para abrir el chat</Text>
-                  <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                  <View style={styles.cardBody}>
+                    <Text style={styles.issueLabel}>Trabajo</Text>
+                    <Text style={styles.issueText}>{job.serviceType}</Text>
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="calendar-outline" size={16} color={colors.white} />
+                        <Text style={styles.metaText}>{formatSchedule(job.scheduledAt)}</Text>
+                      </View>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.white} />
+                        <Text style={styles.metaText}>Último mensaje</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.lastMessage}>{job.lastMessagePreview || 'Sin mensajes aún.'}</Text>
+                  </View>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardFooterText}>Tocar para abrir el chat</Text>
+                    <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+          {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
         </ScrollView>
 
         <BottomNav navigation={navigation} jobsRoute="MyJobs" />
@@ -260,6 +315,34 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     fontSize: 13,
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 12,
+  },
+  loadingText: {
+    color: colors.white,
+    opacity: 0.8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  emptySubtitle: {
+    color: colors.mutedText,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: 16,
+  },
 });
-
-export default MyJobsScreen;

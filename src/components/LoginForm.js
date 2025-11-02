@@ -1,16 +1,26 @@
 import React from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Formik } from 'formik';
+import * as Yup from 'yup';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 export const LoginForm = ({ onSubmit }) => {
+  const validationSchema = Yup.object().shape({
+    username: Yup.string().trim().required('Ingresa tu usuario o correo'),
+    password: Yup.string().required('Ingresa tu contraseña'),
+  });
+
   return (
     <Formik
       initialValues={{ username: '', password: '' }}
-      onSubmit={(values, helpers) => {
-        onSubmit?.(values);
-        setTimeout(() => helpers.setSubmitting(false), 1000);
+      validationSchema={validationSchema}
+      onSubmit={async (values, helpers) => {
+        try {
+          await onSubmit?.(values);
+        } finally {
+          helpers.setSubmitting(false);
+        }
       }}
     >
       {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
@@ -23,6 +33,7 @@ export const LoginForm = ({ onSubmit }) => {
                 placeholder="Usuario o Email"
                 placeholderTextColor={colors.mutedText}
                 autoCapitalize="none"
+                autoCorrect={false}
                 onChangeText={handleChange('username')}
                 onBlur={handleBlur('username')}
                 value={values.username}

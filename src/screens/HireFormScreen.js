@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
+import { useAuth } from '../context/AuthContext';
+import { serviceOrdersApi } from '../api';
 
 // Esquema de validación con Yup
 const HireSchema = Yup.object().shape({
@@ -45,17 +47,59 @@ const HireSchema = Yup.object().shape({
 
 export const HireFormScreen = ({ route, navigation }) => {
   const { professional } = route.params;
-  const [selectedService, setSelectedService] = useState('');
+  const { token, user } = useAuth();
 
-  const handleSubmit = (values) => {
-    // Simulamos validación y navegamos a la pantalla de pago
-    const hireSummary = {
-      professional,
-      clientData: values,
-      totalAmount: values.budget,
+  const initialValues = useMemo(() => ({
+    fullName: user?.fullName || '',
+    phone: user?.phone || '',
+    email: user?.email || '',
+    address: user?.location || '',
+    serviceType: professional?.services?.[0] || '',
+    description: '',
+    preferredDate: '',
+    budget: '',
+  }), [professional?.services, user]);
+
+  const handleSubmit = async (values, helpers) => {
+    if (!token) {
+      Alert.alert('Debes iniciar sesión', 'Para contratar un profesional necesitas iniciar sesión.');
+      return;
+    }
+
+    const budgetNumber = Number(values.budget);
+    if (Number.isNaN(budgetNumber) || budgetNumber <= 0) {
+      Alert.alert('Presupuesto inválido', 'Ingresá un monto válido.');
+      return;
+    }
+
+    const payload = {
+      professionalId: professional.id,
+      contactName: values.fullName,
+      contactPhone: values.phone,
+      contactEmail: values.email,
+      address: values.address,
+      serviceType: values.serviceType || professional?.services?.[0] || 'Servicio',
+      description: values.description,
+      preferredDate: values.preferredDate,
+      budget: budgetNumber,
+      paymentPreference: 'card',
     };
 
-    navigation.navigate('Payment', { hireSummary });
+    try {
+      const serviceOrder = await serviceOrdersApi.create(token, payload);
+      const hireSummary = {
+        professional,
+        clientData: values,
+        totalAmount: budgetNumber,
+        serviceOrder,
+      };
+
+      navigation.navigate('Payment', { hireSummary });
+    } catch (error) {
+      console.error('Error creating service order', error);
+      Alert.alert('Error', error?.message ?? 'No se pudo crear la solicitud.');
+      helpers.setSubmitting(false);
+    }
   };
 
   return (
@@ -81,16 +125,8 @@ export const HireFormScreen = ({ route, navigation }) => {
         </View>
 
         <Formik
-          initialValues={{
-            fullName: '',
-            phone: '',
-            email: '',
-            address: '',
-            serviceType: '',
-            description: '',
-            preferredDate: '',
-            budget: '',
-          }}
+          initialValues={initialValues}
+          enableReinitialize
           validationSchema={HireSchema}
           onSubmit={handleSubmit}
         >

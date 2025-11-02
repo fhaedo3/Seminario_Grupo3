@@ -1,14 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RegisterForm } from '../components/RegisterForm';
 import { BackButton } from '../components/BackButton';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 
 export const RegisterScreen = ({ navigation }) => {
-  const handleRegister = (values) => {
-    console.log('Usuario intenta registrarse', values);
+  const { register } = useAuth();
+  const [registerError, setRegisterError] = useState('');
+
+  const handleRegister = async (values) => {
+    const payload = {
+      username: values.username?.trim(),
+      email: values.email?.trim(),
+      phone: values.phone?.trim() || '',
+      password: values.password,
+      fullName: values.fullName?.trim() || values.username?.trim(),
+      registerAsProfessional: Boolean(values.registerAsProfessional),
+    };
+
+    try {
+      setRegisterError('');
+      await register(payload);
+    } catch (error) {
+      const message = error?.message ?? 'No se pudo completar el registro';
+      setRegisterError(message);
+      throw error;
+    }
   };
 
   const handleLogin = () => {
@@ -36,7 +56,7 @@ export const RegisterScreen = ({ navigation }) => {
           <View style={styles.content}>
             <Text style={styles.title}>Crear cuenta</Text>
             
-            <RegisterForm onSubmit={handleRegister} />
+            <RegisterForm onSubmit={handleRegister} apiError={registerError} />
             
             <View style={styles.loginContainer}>
               <Text style={styles.loginText}>¿Ya tienes una cuenta?</Text>

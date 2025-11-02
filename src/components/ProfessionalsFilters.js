@@ -14,7 +14,15 @@ const DEFAULT_DISTANCE = 'Cualquier distancia';
 const DEFAULT_PROFESSION = 'Todas';
 const DEFAULT_OTHER = 'Todos';
 
-export const FilterModal = ({ visible, onClose, onApplyFilters, initialFilters }) => {
+export const FilterModal = ({
+  visible,
+  onClose,
+  onApplyFilters,
+  initialFilters,
+  professionOptions = [],
+  tagOptions = [],
+  distanceOptions = [DEFAULT_DISTANCE, '< 5 km', '5-10 km', '10-25 km'],
+}) => {
   const [selectedDistance, setSelectedDistance] = useState(DEFAULT_DISTANCE);
   const [selectedProfession, setSelectedProfession] = useState(DEFAULT_PROFESSION);
   const [selectedOther, setSelectedOther] = useState(DEFAULT_OTHER);
@@ -29,9 +37,18 @@ export const FilterModal = ({ visible, onClose, onApplyFilters, initialFilters }
     setSelectedOther(initialFilters?.other ?? DEFAULT_OTHER);
   }, [visible, initialFilters]);
 
-  const distances = [DEFAULT_DISTANCE, '< 5 km', '5-10 km', '10-25 km'];
-  const professions = [DEFAULT_PROFESSION, 'Plomero', 'Electricista', 'Gasista'];
-  const others = [DEFAULT_OTHER, 'Popular', 'Matriculado', 'Verificado'];
+  const distances = distanceOptions?.length ? [DEFAULT_DISTANCE, ...distanceOptions.filter((item) => item !== DEFAULT_DISTANCE)] : [
+    DEFAULT_DISTANCE,
+    '< 5 km',
+    '5-10 km',
+    '10-25 km',
+  ];
+  const professions = professionOptions?.length
+    ? [DEFAULT_PROFESSION, ...professionOptions.filter((item) => item && item !== DEFAULT_PROFESSION)]
+    : [DEFAULT_PROFESSION, 'Plomero', 'Electricista', 'Gasista'];
+  const others = tagOptions?.length
+    ? [DEFAULT_OTHER, ...tagOptions.filter((item) => item && item !== DEFAULT_OTHER)]
+    : [DEFAULT_OTHER, 'Popular', 'Matriculado', 'Verificado'];
 
   const handleApply = () => {
     onApplyFilters({

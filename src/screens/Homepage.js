@@ -1,16 +1,46 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
 import { BackButton } from '../components/BackButton';
-import { professionals } from '../assets/data/plomerosdata';
+import { professionalsApi } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export const Homepage = ({ navigation, route }) => {
-  const userName = route?.params?.userName ?? 'Usuario';
-  const featuredProfessionals = professionals;
+  const { user } = useAuth();
+  const [featuredProfessionals, setFeaturedProfessionals] = useState([]);
+  const [loadingProfessionals, setLoadingProfessionals] = useState(false);
+
+  const userName = useMemo(() => {
+    if (user?.fullName) {
+      return user.fullName.split(' ')[0];
+    }
+    if (user?.username) {
+      return user.username;
+    }
+    return route?.params?.userName ?? 'Usuario';
+  }, [user, route?.params?.userName]);
+
+  useEffect(() => {
+    const loadProfessionals = async () => {
+      setLoadingProfessionals(true);
+      try {
+        const response = await professionalsApi.search({ page: 0, size: 5 });
+        const content = Array.isArray(response?.content) ? response.content : [];
+        setFeaturedProfessionals(content);
+      } catch (error) {
+        console.error('Error fetching professionals', error);
+        Alert.alert('No se pudieron cargar los profesionales destacados');
+      } finally {
+        setLoadingProfessionals(false);
+      }
+    };
+
+    loadProfessionals();
+  }, []);
 
   const quickActions = [
     {
@@ -97,33 +127,46 @@ export const Homepage = ({ navigation, route }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Profesionales destacados</Text>
             <View style={styles.featuredList}>
-              {featuredProfessionals.map((prof) => (
-                <View key={prof.id} style={styles.featuredCard}>
-                  <View style={styles.featuredHeader}>
-                    <View style={styles.featuredAvatar}>
-                      <Ionicons name="person" size={24} color={colors.white} />
-                    </View>
-                    <View style={styles.featuredInfo}>
-                      <Text style={styles.featuredName}>{prof.name}</Text>
-                      <Text style={styles.featuredMeta}>{prof.profession} · {prof.experience} anios</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.featuredButton}
-                      onPress={() => navigation.navigate('Chat', {
-                        professional: {
-                          name: prof.name,
-                          profession: prof.profession,
-                          avatar: prof.image,
-                        },
-                        jobSummary: `Consulta sobre ${prof.profession.toLowerCase()}`,
-                      })}
-                    >
-                      <Ionicons name="chatbubble-ellipses" size={18} color={colors.white} />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.featuredDescription}>{prof.description.replace(/"/g, '')}</Text>
+              {loadingProfessionals ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color={colors.white} />
+                  <Text style={styles.loadingText}>Buscando profesionales...</Text>
                 </View>
-              ))}
+              ) : (
+                featuredProfessionals.map((prof) => (
+                  <View key={prof.id} style={styles.featuredCard}>
+                    <View style={styles.featuredHeader}>
+                      <View style={styles.featuredAvatar}>
+                        <Ionicons name="person" size={24} color={colors.white} />
+                      </View>
+                      <View style={styles.featuredInfo}>
+                        <Text style={styles.featuredName}>{prof.displayName || prof.name}</Text>
+                        <Text style={styles.featuredMeta}>
+                          {prof.profession} · {prof.experienceYears ?? 0} años
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.featuredButton}
+                        onPress={() => navigation.navigate('Chat', {
+                          professional: {
+                            id: prof.id,
+                            name: prof.displayName || prof.name,
+                            profession: prof.profession,
+                            avatar: null,
+                          },
+                          jobSummary: `Consulta sobre ${prof.profession?.toLowerCase?.() || 'el servicio'}`,
+                          serviceOrderId: null,
+                        })}
+                      >
+                        <Ionicons name="chatbubble-ellipses" size={18} color={colors.white} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.featuredDescription}>
+                      {prof.summary || 'Consultá para conocer más sobre este profesional.'}
+                    </Text>
+                  </View>
+                ))
+              )}
             </View>
           </View>
 
@@ -200,6 +243,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 20,
     padding: 18,
+  },
+  loadingContainer: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    color: colors.white,
+    opacity: 0.8,
   },
   featuredHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   featuredAvatar: {
