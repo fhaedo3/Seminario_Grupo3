@@ -21,6 +21,7 @@ import { BackButton } from '../components/BackButton';
 import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi } from '../api';
+import { withBaseUrl } from '../config/api';
 
 const fallbackProfessional = {
     name: 'Jonathan Leguizamón',
@@ -40,6 +41,10 @@ export const ChatScreen = ({ navigation, route }) => {
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
     const [menuVisible, setMenuVisible] = useState(false);
+    const [completeJobModalVisible, setCompleteJobModalVisible] = useState(false);
+    const [rating, setRating] = useState(0);
+    const [reviewComment, setReviewComment] = useState('');
+    const [completingJob, setCompletingJob] = useState(false);
     const scrollViewRef = useRef();
 
     const avatarSource = professional.avatar || require('../assets/images/plomero1.png');
@@ -161,6 +166,57 @@ export const ChatScreen = ({ navigation, route }) => {
                 },
             ]
         );
+    };
+
+    const handleCompleteJobPress = () => {
+        setMenuVisible(false);
+        setCompleteJobModalVisible(true);
+    };
+
+    const handleCompleteJob = async () => {
+        if (rating === 0) {
+            Alert.alert('Calificación requerida', 'Por favor seleccioná una calificación antes de continuar.');
+            return;
+        }
+
+        setCompletingJob(true);
+        try {
+            // Llamar al endpoint del backend para completar el trabajo
+            const response = await fetch(withBaseUrl(`/service-orders/${serviceOrderId}/complete`), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    rating: rating,
+                    comment: reviewComment.trim() || null,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('No se pudo completar el trabajo');
+            }
+
+            Alert.alert(
+                'Trabajo completado',
+                '¡Gracias por tu calificación! El trabajo ha sido marcado como finalizado.',
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            setCompleteJobModalVisible(false);
+                            navigation.goBack();
+                        },
+                    },
+                ]
+            );
+        } catch (error) {
+            console.error('Error completing job:', error);
+            Alert.alert('Error', 'No se pudo completar el trabajo. Intentá nuevamente.');
+        } finally {
+            setCompletingJob(false);
+        }
     };
 
     const MessageBubble = ({ msg }) => {
@@ -293,6 +349,14 @@ export const ChatScreen = ({ navigation, route }) => {
                             <View style={styles.menuDivider} />
                             <TouchableOpacity
                                 style={styles.menuItem}
+                                onPress={handleCompleteJobPress}
+                            >
+                                <Ionicons name="checkmark-circle-outline" size={22} color="#5cb85c" />
+                                <Text style={[styles.menuItemText, { color: '#5cb85c' }]}>Completar trabajo</Text>
+                            </TouchableOpacity>
+                            <View style={styles.menuDivider} />
+                            <TouchableOpacity
+                                style={styles.menuItem}
                                 onPress={handleDeleteConversation}
                             >
                                 <Ionicons name="trash-outline" size={22} color="#ff4757" />
@@ -300,6 +364,78 @@ export const ChatScreen = ({ navigation, route }) => {
                             </TouchableOpacity>
                         </View>
                     </TouchableOpacity>
+                </Modal>
+
+                {/* Complete Job Modal */}
+                <Modal
+                    visible={completeJobModalVisible}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setCompleteJobModalVisible(false)}
+                >
+                    <View style={styles.completeModalOverlay}>
+                        <View style={styles.completeModalContainer}>
+                            <Text style={styles.completeModalTitle}>Completar Trabajo</Text>
+                            <Text style={styles.completeModalSubtitle}>
+                                ¿Cómo fue tu experiencia con {professionalName}?
+                            </Text>
+
+                            {/* Star Rating */}
+                            <View style={styles.ratingContainer}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <TouchableOpacity
+                                        key={star}
+                                        onPress={() => setRating(star)}
+                                        style={styles.starButton}
+                                    >
+                                        <Ionicons
+                                            name={star <= rating ? 'star' : 'star-outline'}
+                                            size={40}
+                                            color="#FFD700"
+                                        />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Comment Input */}
+                            <TextInput
+                                style={styles.commentInput}
+                                placeholder="Comentario (opcional)"
+                                placeholderTextColor={colors.mutedText}
+                                value={reviewComment}
+                                onChangeText={setReviewComment}
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                            />
+
+                            {/* Action Buttons */}
+                            <View style={styles.completeModalActions}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => {
+                                        setCompleteJobModalVisible(false);
+                                        setRating(0);
+                                        setReviewComment('');
+                                    }}
+                                    disabled={completingJob}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.confirmButton, completingJob && styles.confirmButtonDisabled]}
+                                    onPress={handleCompleteJob}
+                                    disabled={completingJob}
+                                >
+                                    {completingJob ? (
+                                        <ActivityIndicator color={colors.white} />
+                                    ) : (
+                                        <Text style={styles.confirmButtonText}>Confirmar</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
                 </Modal>
             </KeyboardAvoidingView>
         </LinearGradient>
@@ -492,5 +628,87 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: 'rgba(255, 255, 255, 0.15)',
         marginVertical: 4,
+    },
+    completeModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    completeModalContainer: {
+        backgroundColor: colors.primaryBlue,
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    completeModalTitle: {
+        color: colors.white,
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    completeModalSubtitle: {
+        color: colors.mutedText,
+        fontSize: 14,
+        marginBottom: 24,
+        textAlign: 'center',
+    },
+    ratingContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 8,
+        marginBottom: 24,
+    },
+    starButton: {
+        padding: 4,
+    },
+    commentInput: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 12,
+        padding: 12,
+        color: colors.white,
+        fontSize: 14,
+        minHeight: 100,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    completeModalActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    cancelButton: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.4)',
+        borderRadius: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    cancelButtonText: {
+        color: colors.white,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    confirmButton: {
+        flex: 1,
+        backgroundColor: colors.greenButton,
+        borderRadius: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    confirmButtonDisabled: {
+        opacity: 0.6,
+    },
+    confirmButtonText: {
+        color: colors.white,
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
