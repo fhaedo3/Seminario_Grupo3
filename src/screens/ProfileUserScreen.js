@@ -29,7 +29,7 @@ const PAYMENT_METHODS_OPTIONS = [
 ];
 
 export const ProfileUserScreen = ({ navigation }) => {
-  const { user, token, logout, fetchProfile } = useAuth();
+  const { user, token, logout, refreshProfile } = useAuth();
   const [formData, setFormData] = useState({
     fullName: "",
     location: "",
@@ -184,8 +184,8 @@ export const ProfileUserScreen = ({ navigation }) => {
       await usersApi.updateProfile(token, profileData);
       
       // Refrescar datos del usuario
-      if (fetchProfile) {
-        await fetchProfile();
+      if (refreshProfile) {
+        await refreshProfile();
       }
       
       showSuccessToast('Datos guardados correctamente');
