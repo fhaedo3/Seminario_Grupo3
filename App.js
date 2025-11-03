@@ -16,7 +16,8 @@ import { ProfileProfessionalScreen } from './src/screens/ProfileProfessionalScre
 import { ProfessionalDetails } from './src/screens/ProfessionalDetails';
 import { HireFormScreen } from './src/screens/HireFormScreen';
 import { PaymentScreen } from './src/screens/PaymentScreen';
-import { ReviewProfessional } from './src/screens/ReviewProfessional'
+import { ReviewProfessional } from './src/screens/ReviewProfessional';
+import { ReplyToReview } from './src/screens/ReplyToReview';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
@@ -75,6 +76,7 @@ const RootNavigator = () => {
         <Stack.Screen name="MyJobs" component={MyJobsScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="ReviewProfessional" component={ReviewProfessional} />
+        <Stack.Screen name="ReplyToReview" component={ReplyToReview} />
         <Stack.Screen name="ProfileUser" component={ProfileUserScreen} />
         <Stack.Screen name="ProfileProfessional" component={ProfileProfessionalScreen} />
         <Stack.Screen name="ProfessionalDetails" component={ProfessionalDetails} />

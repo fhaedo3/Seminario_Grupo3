@@ -21,6 +21,29 @@ export const professionalsApi = {
 export const reviewsApi = {
   listByProfessional: (professionalId, params = {}) =>
     request('/reviews', { params: { professionalId, ...params } }),
+  create: (token, payload) =>
+    request('/reviews', { method: 'POST', token, body: payload }),
+  update: (token, reviewId, payload) =>
+    request(`/reviews/${reviewId}`, { method: 'PUT', token, body: payload }),
+  delete: (token, reviewId) =>
+    request(`/reviews/${reviewId}`, { method: 'DELETE', token }),
+  checkIfUserReviewed: (token, professionalId) =>
+    request('/reviews/check', { method: 'GET', token, params: { professionalId } }),
+  getUserReview: (token, professionalId) =>
+    request('/reviews/user-review', { method: 'GET', token, params: { professionalId } }),
+};
+
+export const reviewRepliesApi = {
+  create: (token, payload) =>
+    request('/review-replies', { method: 'POST', token, body: payload }),
+  update: (token, replyId, payload) =>
+    request(`/review-replies/${replyId}`, { method: 'PUT', token, body: payload }),
+  delete: (token, replyId) =>
+    request(`/review-replies/${replyId}`, { method: 'DELETE', token }),
+  getByReviewId: (reviewId) =>
+    request(`/review-replies/by-review/${reviewId}`, { method: 'GET' }),
+  checkIfHasReply: (reviewId) =>
+    request(`/review-replies/check/${reviewId}`, { method: 'GET' }),
 };
 
 export const serviceOrdersApi = {
