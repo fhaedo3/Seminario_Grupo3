@@ -12,7 +12,6 @@ import { colors } from '../theme/colors';
 
 const DEFAULT_DISTANCE = 'Cualquier distancia';
 const DEFAULT_PROFESSION = 'Todas';
-const DEFAULT_OTHER = 'Todos';
 
 export const FilterModal = ({
   visible,
@@ -25,7 +24,6 @@ export const FilterModal = ({
 }) => {
   const [selectedDistance, setSelectedDistance] = useState(DEFAULT_DISTANCE);
   const [selectedProfession, setSelectedProfession] = useState(DEFAULT_PROFESSION);
-  const [selectedOther, setSelectedOther] = useState(DEFAULT_OTHER);
 
   useEffect(() => {
     if (!visible) {
@@ -34,7 +32,6 @@ export const FilterModal = ({
 
     setSelectedDistance(initialFilters?.distance ?? DEFAULT_DISTANCE);
     setSelectedProfession(initialFilters?.profession ?? DEFAULT_PROFESSION);
-    setSelectedOther(initialFilters?.other ?? DEFAULT_OTHER);
   }, [visible, initialFilters]);
 
   const distances = distanceOptions?.length ? [DEFAULT_DISTANCE, ...distanceOptions.filter((item) => item !== DEFAULT_DISTANCE)] : [
@@ -46,15 +43,11 @@ export const FilterModal = ({
   const professions = professionOptions?.length
     ? [DEFAULT_PROFESSION, ...professionOptions.filter((item) => item && item !== DEFAULT_PROFESSION)]
     : [DEFAULT_PROFESSION, 'Plomero', 'Electricista', 'Gasista'];
-  const others = tagOptions?.length
-    ? [DEFAULT_OTHER, ...tagOptions.filter((item) => item && item !== DEFAULT_OTHER)]
-    : [DEFAULT_OTHER, 'Popular', 'Matriculado', 'Verificado'];
 
   const handleApply = () => {
     onApplyFilters({
       distance: selectedDistance,
       profession: selectedProfession,
-      other: selectedOther,
     });
     onClose();
   };
@@ -130,15 +123,6 @@ export const FilterModal = ({
               selected={selectedProfession}
               onSelect={setSelectedProfession}
               color="#2196F3"
-            />
-
-            {/* Other Filter */}
-            <FilterSection
-              title="Otros"
-              options={others}
-              selected={selectedOther}
-              onSelect={setSelectedOther}
-              color="#4CAF50"
             />
 
             {/* Apply Button */}

@@ -101,7 +101,9 @@ export const ProfessionalDetails = ({ route, navigation }) => {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Ionicons name="star" size={20} color="#FFD700" />
-              <Text style={styles.statValue}>{professional.rating ?? 'N/D'}</Text>
+              <Text style={styles.statValue}>
+                {professional.rating != null ? professional.rating.toFixed(2) : 'N/D'}
+              </Text>
               <Text style={styles.statLabel}>Calificación</Text>
             </View>
             <View style={styles.statDivider} />

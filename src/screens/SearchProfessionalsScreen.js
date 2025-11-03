@@ -36,7 +36,6 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
   const [filters, setFilters] = useState({
     distance: 'Cualquier distancia',
     profession: 'Todas',
-    other: 'Todos',
   });
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -103,9 +102,6 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
       if (filters.profession && filters.profession !== 'Todas') {
         params.profession = filters.profession;
       }
-      if (filters.other && filters.other !== 'Todos') {
-        params.tag = filters.other;
-      }
       if (maxDistanceParam) {
         params.maxDistance = maxDistanceParam;
       }
@@ -132,7 +128,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [filters.other, filters.profession, maxDistanceParam, searchTerm]);
+  }, [filters.profession, maxDistanceParam, searchTerm]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -231,29 +227,34 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
                       </TouchableOpacity>
                     </View>
                     <Text style={styles.description}>{prof.summary || 'Consultá para conocer más detalles.'}</Text>
+                    
+                    {/* Stats Row */}
+                    <View style={styles.statsRow}>
+                      <View style={styles.statItem}>
+                        <Ionicons name="star" size={16} color="#FFD700" />
+                        <Text style={styles.statValue}>
+                          {prof.rating != null ? prof.rating.toFixed(2) : 'N/D'}
+                        </Text>
+                        <Text style={styles.statLabel}>Calificación</Text>
+                      </View>
+                      <View style={styles.statDivider} />
+                      <View style={styles.statItem}>
+                        <Ionicons name="briefcase-outline" size={16} color="#FFF" />
+                        <Text style={styles.statValue}>{prof.experienceYears ?? 0}</Text>
+                        <Text style={styles.statLabel}>Años exp.</Text>
+                      </View>
+                      <View style={styles.statDivider} />
+                      <View style={styles.statItem}>
+                        <Ionicons name="people-outline" size={16} color="#FFF" />
+                        <Text style={styles.statValue}>{prof.reviewCount ?? 0}</Text>
+                        <Text style={styles.statLabel}>Opiniones</Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
-                    style={styles.primaryAction}
-                    onPress={() =>
-                      navigation.navigate('Chat', {
-                        professional: {
-                          id: prof.id,
-                          name: prof.displayName || prof.name,
-                          profession: prof.profession,
-                          avatar: null,
-                        },
-                        jobSummary: `Consulta sobre ${prof.profession?.toLowerCase?.() || 'el servicio'}`,
-                        serviceOrderId: null,
-                      })
-                    }
-                  >
-                    <Ionicons name="chatbubble-ellipses" size={18} color={colors.white} />
-                    <Text style={styles.primaryActionText}>Chatear</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.secondaryAction}
+                    style={styles.fullWidthAction}
                     onPress={() =>
                       navigation.navigate('ProfessionalDetails', {
                         professionalId: prof.id,
@@ -427,6 +428,34 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 12,
     fontStyle: "italic",
+    marginBottom: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  statValue: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statLabel: {
+    color: colors.mutedText,
+    fontSize: 10,
   },
   actionsRow: {
     flexDirection: "row",
@@ -434,6 +463,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 14,
     gap: 12,
+  },
+  fullWidthAction: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
   },
   primaryAction: {
     flex: 1,
