@@ -12,6 +12,7 @@ import {
     Image,
     ActivityIndicator,
     Alert,
+    Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -27,22 +28,10 @@ const fallbackProfessional = {
     profession: 'Plomero',
 };
 
-const fallbackMessages = [
-    { id: 1, text: 'Hola, en que puedo ayudarte?', sender: 'professional' },
-    { id: 2, text: 'Estoy con una gotera', sender: 'user' },
-    { id: 3, text: 'Si queres mandame una foto asi me fijo', sender: 'professional' },
-    {
-        id: 4,
-        text: 'Es en el techo de la cocina',
-        sender: 'user',
-        image: require('../assets/images/gotera.png'),
-    },
-];
-
 export const ChatScreen = ({ navigation, route }) => {
     const professional = route?.params?.professional ?? fallbackProfessional;
     const jobSummary = route?.params?.jobSummary ?? 'Detalle del trabajo';
-    const conversationSeed = route?.params?.initialMessages ?? fallbackMessages;
+    const conversationSeed = route?.params?.initialMessages ?? [];
     const serviceOrderId = route?.params?.serviceOrderId ?? null;
     const { token, user, username } = useAuth();
 
@@ -50,6 +39,7 @@ export const ChatScreen = ({ navigation, route }) => {
     const [inputText, setInputText] = useState('');
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
+    const [menuVisible, setMenuVisible] = useState(false);
     const scrollViewRef = useRef();
 
     const avatarSource = professional.avatar || require('../assets/images/plomero1.png');
@@ -91,7 +81,7 @@ export const ChatScreen = ({ navigation, route }) => {
             .finally(() => {
                 setLoadingMessages(false);
             });
-    }, [conversationSeed, serviceOrderId, token]);
+    }, [serviceOrderId, token]); // Removida dependencia conversationSeed
 
     const handleSend = () => {
         if (inputText.trim() === '') {
@@ -130,6 +120,47 @@ export const ChatScreen = ({ navigation, route }) => {
             .finally(() => {
                 setSending(false);
             });
+    };
+
+    const handleViewProfile = () => {
+        setMenuVisible(false);
+        if (professional.id) {
+            navigation.navigate('ProfessionalDetails', { professionalId: professional.id });
+        } else {
+            Alert.alert('Perfil no disponible', 'No se pudo cargar el perfil del profesional.');
+        }
+    };
+
+    const handleDeleteConversation = () => {
+        setMenuVisible(false);
+        Alert.alert(
+            'Borrar conversación',
+            '¿Estás seguro de que querés borrar esta conversación?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Borrar',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            // Borrar localmente primero para respuesta rápida
+                            setMessages([]);
+                            
+                            // Si hay serviceOrderId y token, borrar del backend
+                            if (serviceOrderId && token) {
+                                await messagesApi.deleteAll(token, serviceOrderId);
+                                Alert.alert('Conversación borrada', 'La conversación ha sido eliminada permanentemente.');
+                            } else {
+                                Alert.alert('Conversación borrada', 'La conversación ha sido eliminada localmente.');
+                            }
+                        } catch (error) {
+                            console.error('Error deleting conversation:', error);
+                            Alert.alert('Error', 'No se pudo borrar la conversación del servidor, pero se eliminó localmente.');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     const MessageBubble = ({ msg }) => {
@@ -173,7 +204,7 @@ export const ChatScreen = ({ navigation, route }) => {
                         <Text style={styles.headerSubtitle}>{professionalProfession}</Text>
                     </View>
                     <View style={styles.headerIcons}>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => setMenuVisible(true)}>
                             <Ionicons name="ellipsis-vertical" size={24} color={colors.white} />
                         </TouchableOpacity>
                     </View>
@@ -238,6 +269,38 @@ export const ChatScreen = ({ navigation, route }) => {
                         )}
                     </TouchableOpacity>
                 </View>
+
+                {/* Menu Modal */}
+                <Modal
+                    visible={menuVisible}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setMenuVisible(false)}
+                >
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setMenuVisible(false)}
+                    >
+                        <View style={styles.menuContainer}>
+                            <TouchableOpacity
+                                style={styles.menuItem}
+                                onPress={handleViewProfile}
+                            >
+                                <Ionicons name="person-outline" size={22} color={colors.white} />
+                                <Text style={styles.menuItemText}>Ver perfil</Text>
+                            </TouchableOpacity>
+                            <View style={styles.menuDivider} />
+                            <TouchableOpacity
+                                style={styles.menuItem}
+                                onPress={handleDeleteConversation}
+                            >
+                                <Ionicons name="trash-outline" size={22} color="#ff4757" />
+                                <Text style={[styles.menuItemText, styles.menuItemDanger]}>Borrar conversación</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                </Modal>
             </KeyboardAvoidingView>
         </LinearGradient>
     );
@@ -281,6 +344,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 18,
         paddingBottom: 10,
+        paddingTop: 12,
         gap: 8,
     },
     jobSummaryIcon: {
@@ -392,5 +456,41 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         opacity: 0.6,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-start',
+        alignItems: 'flex-end',
+        paddingTop: Platform.OS === 'ios' ? 100 : 80,
+        paddingRight: 20,
+    },
+    menuContainer: {
+        backgroundColor: 'rgba(30, 58, 138, 0.95)',
+        borderRadius: 12,
+        minWidth: 220,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        gap: 12,
+    },
+    menuItemText: {
+        color: colors.white,
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    menuItemDanger: {
+        color: '#ff4757',
+    },
+    menuDivider: {
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        marginVertical: 4,
     },
 });

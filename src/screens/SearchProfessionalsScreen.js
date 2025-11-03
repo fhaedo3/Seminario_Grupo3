@@ -16,7 +16,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { FilterModal } from '../components/ProfessionalsFilters';
-import { BackButton } from '../components/BackButton';
 import { BottomNav } from '../components/BottomNav';
 import { professionalsApi } from '../api';
 
@@ -163,9 +162,6 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <BackButton navigation={navigation} fallbackRoute="Homepage" />
-          </View>
           <Text style={styles.title}>Buscar</Text>
           <Text style={styles.subtitle}>Encontrá profesionales de confianza</Text>
         </View>

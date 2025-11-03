@@ -12,7 +12,6 @@ export const ProfessionalDetails = ({ route, navigation }) => {
   const [professional, setProfessional] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     const loadProfessional = async () => {
@@ -72,16 +71,6 @@ export const ProfessionalDetails = ({ route, navigation }) => {
           navigation={navigation}
           backgroundColor="rgba(0,0,0,0.5)"
         />
-        <TouchableOpacity 
-          style={styles.favoriteButton}
-          onPress={() => setIsFavorite(!isFavorite)}
-        >
-          <Ionicons 
-            name={isFavorite ? "heart" : "heart-outline"} 
-            size={24} 
-            color={isFavorite ? "#ff4757" : colors.white} 
-          />
-        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -285,14 +274,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     zIndex: 10,
   },
-  favoriteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   scroll: {
     flex: 1,
     paddingTop: Platform.OS === 'ios' ? 100 : 90,
@@ -307,11 +288,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   profileImageContainer: {
     position: 'relative',
@@ -431,10 +409,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   opinionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   opinionHeader: {
     flexDirection: 'row',
@@ -445,7 +425,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -467,7 +447,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     lineHeight: 20,
-    opacity: 0.9,
+    opacity: 1,
   },
   bottomSpace: {
     height: 20,

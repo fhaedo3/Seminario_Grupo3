@@ -15,7 +15,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { BottomNav } from '../components/BottomNav';
-import { BackButton } from '../components/BackButton';
 import { showSuccessToast } from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, authApi } from '../api';
@@ -191,7 +190,19 @@ export const ProfileUserScreen = ({ navigation }) => {
       showSuccessToast('Datos guardados correctamente');
     } catch (error) {
       console.error('Error saving profile:', error);
-      Alert.alert('Error', error.message || 'No se pudo guardar el perfil. Intenta nuevamente.');
+      
+      // Mejorar el mensaje de error según el tipo
+      let errorMessage = 'No se pudo guardar el perfil. Intenta nuevamente.';
+      
+      if (error.message && error.message.includes('Network request failed')) {
+        errorMessage = 'Sin conexión al servidor. Verifica tu conexión e intenta nuevamente.';
+      } else if (error.status === 401) {
+        errorMessage = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setSaving(false);
     }
@@ -224,7 +235,6 @@ export const ProfileUserScreen = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <BackButton navigation={navigation} fallbackRoute="Homepage" />
             <Text style={styles.headerTitle}>Mi Perfil</Text>
             <TouchableOpacity
               style={styles.logoutButton}
@@ -242,6 +252,8 @@ export const ProfileUserScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
         >
           {/* Avatar and Name */}
           <View style={styles.avatarSection}>
@@ -429,7 +441,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: Platform.OS === "ios" ? 50 : 40,
-    paddingBottom: 110,
+    paddingBottom: 80, // Reducido de 110 a 80
   },
   header: {
     paddingHorizontal: 24,
@@ -469,8 +481,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 240,
+    paddingBottom: 100, 
     flexGrow: 1,
+    justifyContent: 'flex-start',
   },
   avatarSection: {
     alignItems: "center",
@@ -594,11 +607,16 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: colors.greenButton,
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 24,
-    marginBottom: 20,
+    marginTop: 32,
+    marginBottom: 30,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   saveButtonDisabled: {
     opacity: 0.7,
