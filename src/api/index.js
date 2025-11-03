@@ -34,6 +34,8 @@ export const messagesApi = {
     request(`/service-orders/${serviceOrderId}/messages`, { method: 'GET', token, params }),
   send: (token, serviceOrderId, payload) =>
     request(`/service-orders/${serviceOrderId}/messages`, { method: 'POST', token, body: payload }),
+  deleteAll: (token, serviceOrderId) =>
+    request(`/service-orders/${serviceOrderId}/messages`, { method: 'DELETE', token }),
 };
 
 export const paymentsApi = {

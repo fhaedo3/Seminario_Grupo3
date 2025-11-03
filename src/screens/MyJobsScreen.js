@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
-import { BackButton } from '../components/BackButton';
 import { useAuth } from '../context/AuthContext';
 import { serviceOrdersApi, professionalsApi } from '../api';
 
@@ -110,10 +109,7 @@ export const MyJobsScreen = ({ navigation }) => {
       <StatusBar style="light" />
       <View style={styles.container}>
         <View style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <BackButton navigation={navigation} fallbackRoute="Homepage" />
-            <Text style={styles.headerTitle}>Mis trabajos</Text>
-          </View>
+          <Text style={styles.headerTitle}>Mis trabajos</Text>
           <Text style={styles.headerSubtitle}>Seguimiento rápido de tus servicios activos</Text>
         </View>
 
@@ -236,11 +232,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 18,
     paddingHorizontal: 16,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   cardHeader: {
     flexDirection: 'row',

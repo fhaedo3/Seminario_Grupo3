@@ -63,6 +63,13 @@ export const AuthProvider = ({ children }) => {
     return handleLoginOrRegister(authApi.register, payload);
   }, [handleLoginOrRegister]);
 
+  const logout = useCallback(async () => {
+    await persistentStorage.removeItem(storageKeys.token);
+    await persistentStorage.removeItem(storageKeys.username);
+    await persistentStorage.removeItem(storageKeys.roles);
+    setState({ ...initialState, initializing: false });
+  }, []);
+
   const refreshProfile = useCallback(async () => {
     if (!state.token) {
       return null;
@@ -72,17 +79,20 @@ export const AuthProvider = ({ children }) => {
       setAuthState({ user: profile });
       return profile;
     } catch (error) {
-      console.error('Refresh profile failed', error);
+      // Solo mostrar warning si no es un error de red común
+      if (!error.message?.includes('Network request failed')) {
+        console.warn('Refresh profile failed', error.message);
+      }
+      
+      // Si es un error 401, el token es inválido - desconectar
+      if (error.status === 401) {
+        console.error('Token expired or invalid, logging out');
+        await logout();
+      }
+      // Para otros errores (red, etc), solo loguear pero mantener sesión
       return null;
     }
-  }, [setAuthState, state.token]);
-
-  const logout = useCallback(async () => {
-    await persistentStorage.removeItem(storageKeys.token);
-    await persistentStorage.removeItem(storageKeys.username);
-    await persistentStorage.removeItem(storageKeys.roles);
-    setState({ ...initialState, initializing: false });
-  }, []);
+  }, [setAuthState, state.token, logout]);
 
   useEffect(() => {
     let isMounted = true;
@@ -99,22 +109,35 @@ export const AuthProvider = ({ children }) => {
         }
 
         if (storedToken && storedUsername) {
+          // Primero restaurar el estado con los datos del storage
+          let restoredRoles = [];
+          if (storedRoles) {
+            try {
+              const parsed = JSON.parse(storedRoles);
+              if (Array.isArray(parsed)) {
+                restoredRoles = parsed;
+              }
+            } catch (error) {
+              console.warn('Failed to parse stored roles', error);
+            }
+          }
+          
+          // Restaurar estado inmediatamente con datos del storage
+          setAuthState({
+            token: storedToken,
+            username: storedUsername,
+            user: null, // Se actualizará si el backend responde
+            roles: restoredRoles,
+            initializing: false,
+          });
+
+          // Intentar actualizar el perfil en segundo plano
           try {
             const profile = await authApi.me(storedToken);
             if (!isMounted) {
               return;
             }
-            let restoredRoles = [];
-            if (storedRoles) {
-              try {
-                const parsed = JSON.parse(storedRoles);
-                if (Array.isArray(parsed)) {
-                  restoredRoles = parsed;
-                }
-              } catch (error) {
-                console.warn('Failed to parse stored roles', error);
-              }
-            }
+            // Actualizar con datos frescos del backend
             setAuthState({
               token: storedToken,
               username: storedUsername,
@@ -123,12 +146,22 @@ export const AuthProvider = ({ children }) => {
               initializing: false,
             });
           } catch (error) {
-            console.error('Failed to restore auth session', error);
-            await persistentStorage.removeItem(storageKeys.token);
-            await persistentStorage.removeItem(storageKeys.username);
-            await persistentStorage.removeItem(storageKeys.roles);
-            if (isMounted) {
-              setAuthState({ initializing: false });
+            // Si es error 401, el token expiró - desconectar
+            if (error.status === 401) {
+              console.error('Token expired, clearing session');
+              await persistentStorage.removeItem(storageKeys.token);
+              await persistentStorage.removeItem(storageKeys.username);
+              await persistentStorage.removeItem(storageKeys.roles);
+              if (isMounted) {
+                setAuthState({ initializing: false });
+              }
+            } else {
+              // Si es error de red u otro, solo logear pero mantener la sesión
+              // Usar console.log en vez de warn para no saturar la consola
+              if (!error.message?.includes('Network request failed')) {
+                console.log('Could not refresh profile from backend, using cached session', error.message);
+              }
+              // NO borrar el token - mantener la sesión offline
             }
           }
           return;
@@ -146,7 +179,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, [setAuthState, state.roles]);
+  }, [setAuthState]); // Eliminada dependencia state.roles que causaba loop infinito
 
   const value = useMemo(() => ({
     token: state.token,
