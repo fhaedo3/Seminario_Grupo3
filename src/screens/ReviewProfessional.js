@@ -9,12 +9,16 @@ import {
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { BackButton } from '../components/BackButton';
+import { useAuth } from '../context/AuthContext';
+import { reviewsApi } from '../api';
 
 export const ReviewProfessional = ({ navigation, route }) => {
   const job = route.params;
@@ -26,9 +30,15 @@ export const ReviewProfessional = ({ navigation, route }) => {
     },
   };
 
+  const { token } = useAuth();
   const [rating, setRating] = useState(0);
   const [selectedTags, setSelectedTags] = useState(new Set());
   const [comment, setComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingReview, setExistingReview] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const tags = [
     "Puntualidad",
@@ -38,6 +48,54 @@ export const ReviewProfessional = ({ navigation, route }) => {
     "Prolijidad",
     "Compromiso",
   ];
+
+  // Verificar si el usuario ya dejó una review
+  React.useEffect(() => {
+    const checkExistingReview = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      const professionalId = job.professionalId || professional.id;
+      
+      if (!professionalId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const review = await reviewsApi.getUserReview(token, professionalId);
+        if (review) {
+          setExistingReview(review);
+          // Cargar la review existente para editarla
+          setRating(review.rating);
+          
+          // Extraer tags del comentario si existen
+          const tagRegex = /^\[Tags: (.*?)\] /;
+          const match = review.comment.match(tagRegex);
+          if (match) {
+            const tags = match[1].split(', ');
+            setSelectedTags(new Set(tags));
+            setComment(review.comment.replace(tagRegex, ''));
+          } else {
+            setComment(review.comment);
+          }
+          
+          setIsEditMode(true);
+          setIsLoading(false);
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        // Si no se encuentra review (404), está bien - puede crear una nueva
+        console.log('No hay review existente, puede crear una nueva');
+        setIsLoading(false);
+      }
+    };
+
+    checkExistingReview();
+  }, [token, job, professional, navigation]);
 
   const toggleTag = (tag) => {
     const newTags = new Set(selectedTags);
@@ -49,18 +107,157 @@ export const ReviewProfessional = ({ navigation, route }) => {
     setSelectedTags(newTags);
   };
 
-  const handleSubmit = () => {
-    // Aquí enviarías la calificación al backend
-    console.log({
-      professional: professional.name,
-      rating,
-      tags: Array.from(selectedTags),
-      comment,
-    });
-    
-    // Navegar de vuelta o mostrar confirmación
-    navigation.goBack();
+  const handleSubmit = async () => {
+    // Validaciones
+    if (rating === 0) {
+      Alert.alert('Error', 'Por favor seleccioná una calificación');
+      return;
+    }
+
+    if (!comment.trim()) {
+      Alert.alert('Error', 'Por favor escribí un comentario');
+      return;
+    }
+
+    if (!token) {
+      Alert.alert('Error', 'Necesitás iniciar sesión para dejar una reseña');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Preparar el payload
+      // Incluir los tags en el comentario si fueron seleccionados
+      let finalComment = comment;
+      if (selectedTags.size > 0) {
+        const tagsArray = Array.from(selectedTags);
+        finalComment = `[Tags: ${tagsArray.join(', ')}] ${comment}`;
+      }
+
+      if (isEditMode && existingReview) {
+        // EDITAR review existente
+        const updateData = {
+          rating: rating,
+          comment: finalComment,
+        };
+
+        await reviewsApi.update(token, existingReview.id, updateData);
+
+        Alert.alert(
+          '¡Reseña actualizada!',
+          'Tu opinión fue actualizada exitosamente.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      } else {
+        // CREAR nueva review
+        const professionalId = job.professionalId || professional.id;
+        
+        if (!professionalId) {
+          Alert.alert('Error', 'No se pudo identificar al profesional');
+          return;
+        }
+
+        const reviewData = {
+          professionalId: professionalId,
+          rating: rating,
+          comment: finalComment,
+        };
+
+        await reviewsApi.create(token, reviewData);
+
+        Alert.alert(
+          '¡Reseña publicada!',
+          'Tu opinión ayuda a otros usuarios a elegir el mejor profesional.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error al enviar reseña:', error);
+      
+      let errorMessage = isEditMode 
+        ? 'No se pudo actualizar tu reseña. Intentá nuevamente.'
+        : 'No se pudo publicar tu reseña. Intentá nuevamente.';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Eliminar reseña',
+      '¿Estás seguro de que querés eliminar tu reseña? Esta acción no se puede deshacer.',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            if (!existingReview || !token) {
+              return;
+            }
+
+            setIsDeleting(true);
+
+            try {
+              await reviewsApi.delete(token, existingReview.id);
+
+              Alert.alert(
+                'Reseña eliminada',
+                'Tu reseña fue eliminada exitosamente.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => navigation.goBack(),
+                  },
+                ]
+              );
+            } catch (error) {
+              console.error('Error al eliminar reseña:', error);
+              Alert.alert('Error', 'No se pudo eliminar la reseña. Intentá nuevamente.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Mostrar loading mientras verifica
+  if (isLoading) {
+    return (
+      <LinearGradient
+        colors={[colors.primaryBlue, colors.secondaryBlue]}
+        style={styles.background}
+      >
+        <StatusBar style="light" />
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.white} />
+          <Text style={styles.loadingText}>Verificando...</Text>
+        </View>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -77,14 +274,23 @@ export const ReviewProfessional = ({ navigation, route }) => {
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
             <BackButton navigation={navigation} />
-            <Text style={styles.headerTitle}>Contános tu Experiencia</Text>
+            <Text style={styles.headerTitle}>
+              {isEditMode ? 'Editar tu Reseña' : 'Contános tu Experiencia'}
+            </Text>
             <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="attach-outline" size={24} color={colors.white} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="ellipsis-vertical" size={24} color={colors.white} />
-              </TouchableOpacity>
+              {isEditMode && (
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={handleDelete}
+                  disabled={isDeleting}
+                >
+                  <Ionicons 
+                    name="trash-outline" 
+                    size={24} 
+                    color={isDeleting ? colors.mutedText : "#ff4757"} 
+                  />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -177,17 +383,52 @@ export const ReviewProfessional = ({ navigation, route }) => {
             </View>
           </View>
 
-          {/* Submit Button */}
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              rating === 0 && styles.submitButtonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={rating === 0}
-          >
-            <Text style={styles.submitButtonText}>ENVIAR</Text>
-          </TouchableOpacity>
+          {/* Mensaje si está editando */}
+          {isEditMode && (
+            <View style={styles.editModeBanner}>
+              <Ionicons name="create-outline" size={24} color={colors.white} />
+              <Text style={styles.editModeText}>
+                Estás editando tu reseña. Podés modificarla o eliminarla.
+              </Text>
+            </View>
+          )}
+
+          {/* Botones de acción */}
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (rating === 0 || isSubmitting) && styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={rating === 0 || isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.submitButtonText}>
+                  {isEditMode ? 'ACTUALIZAR RESEÑA' : 'ENVIAR RESEÑA'}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {isEditMode && (
+              <TouchableOpacity
+                style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
+                onPress={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={20} color={colors.white} />
+                    <Text style={styles.deleteButtonText}>ELIMINAR RESEÑA</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -197,6 +438,16 @@ export const ReviewProfessional = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   background: {
     flex: 1,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: colors.white,
+    fontSize: 16,
+    marginTop: 16,
   },
   container: {
     flex: 1,
@@ -343,6 +594,24 @@ const styles = StyleSheet.create({
     color: "#333",
     minHeight: 100,
   },
+  editModeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(33, 150, 243, 0.3)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  editModeText: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    gap: 12,
+  },
   submitButton: {
     backgroundColor: colors.greenButton,
     paddingVertical: 16,
@@ -354,6 +623,24 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   submitButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  deleteButton: {
+    backgroundColor: '#ff4757',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.5,
+  },
+  deleteButtonText: {
     color: colors.white,
     fontSize: 16,
     fontWeight: "700",
