@@ -25,7 +25,8 @@ const HireSchema = Yup.object().shape({
   address: Yup.string()
     .min(10, 'La dirección debe ser más específica')
     .required('La dirección es obligatoria'),
-  serviceType: Yup.string()
+  serviceType: Yup.array()
+    .min(1, 'Selecciona al menos un tipo de servicio')
     .required('Selecciona el tipo de servicio'),
   description: Yup.string()
     .min(20, 'Describe el trabajo con más detalle (mínimo 20 caracteres)')
@@ -49,10 +50,10 @@ export const HireFormScreen = ({ route, navigation }) => {
 
   const initialValues = useMemo(() => ({
     address: '',
-    serviceType: professional?.services?.[0] || '',
+    serviceType: [],
     description: '',
     preferredDate: '',
-  }), [professional?.services]);
+  }), []);
 
   const handleSubmit = async (values, helpers) => {
     if (!token) {
@@ -66,7 +67,7 @@ export const HireFormScreen = ({ route, navigation }) => {
       contactPhone: user?.phone || '',
       contactEmail: user?.email || '',
       address: values.address,
-      serviceType: values.serviceType || professional?.services?.[0] || 'Servicio',
+      serviceType: values.serviceType,
       description: values.description,
       preferredDate: values.preferredDate,
       budget: 0, // Se definirá luego con el profesional
@@ -180,14 +181,20 @@ export const HireFormScreen = ({ route, navigation }) => {
                           key={index}
                           style={[
                             styles.serviceChip,
-                            values.serviceType === service && styles.serviceChipSelected,
+                            values.serviceType.includes(service) && styles.serviceChipSelected,
                           ]}
-                          onPress={() => setFieldValue('serviceType', service)}
+                          onPress={() => {
+                            const currentServices = values.serviceType;
+                            const newServices = currentServices.includes(service)
+                              ? currentServices.filter(s => s !== service)
+                              : [...currentServices, service];
+                            setFieldValue('serviceType', newServices);
+                          }}
                         >
                           <Text
                             style={[
                               styles.serviceChipText,
-                              values.serviceType === service && styles.serviceChipTextSelected,
+                              values.serviceType.includes(service) && styles.serviceChipTextSelected,
                             ]}
                           >
                             {service}
