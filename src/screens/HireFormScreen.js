@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +39,9 @@ const HireSchema = Yup.object().shape({
 export const HireFormScreen = ({ route, navigation }) => {
   const { professional } = route.params;
   const { token, user } = useAuth();
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [date, setDate] = useState(new Date());
 
   const serviceOptions = useMemo(() => {
     const services = professional?.services || [];
@@ -231,19 +235,54 @@ export const HireFormScreen = ({ route, navigation }) => {
                   {/* Fecha preferida */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Fecha preferida *</Text>
-                    <View style={[styles.inputContainer, touched.preferredDate && errors.preferredDate && styles.inputError]}>
-                      <Ionicons name="calendar-outline" size={20} color={colors.white} style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Ej: 25/10/2025"
-                        placeholderTextColor="rgba(255,255,255,0.5)"
-                        value={values.preferredDate}
-                        onChangeText={handleChange('preferredDate')}
-                        onBlur={handleBlur('preferredDate')}
+                    <TouchableOpacity
+                      style={[
+                        styles.inputContainer,
+                        touched.preferredDate && errors.preferredDate && styles.inputError,
+                      ]}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Ionicons
+                        name="calendar-outline"
+                        size={20}
+                        color={colors.white}
+                        style={styles.inputIcon}
                       />
-                    </View>
+                      <Text
+                        style={[
+                          styles.input,
+                          {
+                            color: values.preferredDate
+                              ? colors.white
+                              : 'rgba(255,255,255,0.5)',
+                          },
+                        ]}
+                      >
+                        {values.preferredDate || 'Ej: 25/10/2025'}
+                      </Text>
+                    </TouchableOpacity>
                     {touched.preferredDate && errors.preferredDate && (
                       <Text style={styles.errorText}>{errors.preferredDate}</Text>
+                    )}
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display="default"
+                        minimumDate={new Date()}
+                        onChange={(event, selectedDate) => {
+                          setShowDatePicker(false);
+                          if (selectedDate) {
+                            const formattedDate = selectedDate.toLocaleDateString('es-AR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            });
+                            setFieldValue('preferredDate', formattedDate);
+                            setDate(selectedDate);
+                          }
+                        }}
+                      />
                     )}
                   </View>
                 </View>
