@@ -38,6 +38,15 @@ export const HireFormScreen = ({ route, navigation }) => {
   const { professional } = route.params;
   const { token, user } = useAuth();
 
+  const serviceOptions = useMemo(() => {
+    const services = professional?.services || [];
+    // Asegurarse de que "Otros" no esté duplicado si ya viene en los datos
+    if (services.find(s => s.toLowerCase() === 'otros')) {
+      return services;
+    }
+    return [...services, 'Otros'];
+  }, [professional?.services]);
+
   const initialValues = useMemo(() => ({
     address: '',
     serviceType: professional?.services?.[0] || '',
@@ -166,7 +175,7 @@ export const HireFormScreen = ({ route, navigation }) => {
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Tipo de servicio *</Text>
                     <View style={styles.servicesGrid}>
-                      {professional.services.map((service, index) => (
+                      {serviceOptions.map((service, index) => (
                         <TouchableOpacity
                           key={index}
                           style={[
@@ -461,4 +470,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-
