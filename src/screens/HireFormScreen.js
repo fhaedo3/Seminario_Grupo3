@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,18 +17,11 @@ import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
+import { useAuth } from '../context/AuthContext';
+import { serviceOrdersApi } from '../api';
 
 // Esquema de validación con Yup
 const HireSchema = Yup.object().shape({
-  fullName: Yup.string()
-    .min(3, 'El nombre debe tener al menos 3 caracteres')
-    .required('El nombre completo es obligatorio'),
-  phone: Yup.string()
-    .min(10, 'El teléfono debe tener al menos 10 dígitos')
-    .required('El teléfono es obligatorio'),
-  email: Yup.string()
-    .email('Ingresa un email válido')
-    .required('El email es obligatorio'),
   address: Yup.string()
     .min(10, 'La dirección debe ser más específica')
     .required('La dirección es obligatoria'),
@@ -39,23 +32,61 @@ const HireSchema = Yup.object().shape({
     .required('La descripción del trabajo es obligatoria'),
   preferredDate: Yup.string()
     .required('La fecha preferida es obligatoria'),
-  budget: Yup.string()
-    .required('Indica tu presupuesto estimado'),
 });
 
 export const HireFormScreen = ({ route, navigation }) => {
   const { professional } = route.params;
-  const [selectedService, setSelectedService] = useState('');
+  const { token, user } = useAuth();
 
-  const handleSubmit = (values) => {
-    // Simulamos validación y navegamos a la pantalla de pago
-    const hireSummary = {
-      professional,
-      clientData: values,
-      totalAmount: values.budget,
+  const initialValues = useMemo(() => ({
+    address: '',
+    serviceType: professional?.services?.[0] || '',
+    description: '',
+    preferredDate: '',
+  }), [professional?.services]);
+
+  const handleSubmit = async (values, helpers) => {
+    if (!token) {
+      Alert.alert('Debes iniciar sesión', 'Para contratar un profesional necesitas iniciar sesión.');
+      return;
+    }
+
+    const payload = {
+      professionalId: professional.id,
+      contactName: user?.fullName || 'Cliente',
+      contactPhone: user?.phone || '',
+      contactEmail: user?.email || '',
+      address: values.address,
+      serviceType: values.serviceType || professional?.services?.[0] || 'Servicio',
+      description: values.description,
+      preferredDate: values.preferredDate,
+      budget: 0, // Se definirá luego con el profesional
+      paymentPreference: 'card',
     };
 
-    navigation.navigate('Payment', { hireSummary });
+    try {
+      const serviceOrder = await serviceOrdersApi.create(token, payload);
+      
+      Alert.alert(
+        '¡Solicitud enviada!',
+        `Tu solicitud ha sido enviada a ${professional.displayName || professional.name || 'el profesional'}. El profesional se pondrá en contacto contigo para coordinar los detalles del servicio y el presupuesto.`,
+        [
+          {
+            text: 'Ver mis trabajos',
+            onPress: () => navigation.navigate('MyJobs'),
+          },
+          {
+            text: 'Volver al inicio',
+            onPress: () => navigation.navigate('Homepage'),
+            style: 'cancel',
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error creating service order', error);
+      Alert.alert('Error', error?.message ?? 'No se pudo crear la solicitud.');
+      helpers.setSubmitting(false);
+    }
   };
 
   return (
@@ -73,24 +104,16 @@ export const HireFormScreen = ({ route, navigation }) => {
         <View style={styles.header}>
           <BackButton navigation={navigation} backgroundColor="rgba(0,0,0,0.3)" />
           <View style={styles.headerContent}>
-            <Text style={styles.title}>Contratar Profesional</Text>
+            <Text style={styles.title}>Solicitar Servicio</Text>
             <Text style={styles.subtitle}>
-              Completá tus datos para contratar a {professional.name}
+              Enviá una solicitud de servicio a {professional.displayName || professional.name || 'el profesional'}
             </Text>
           </View>
         </View>
 
         <Formik
-          initialValues={{
-            fullName: '',
-            phone: '',
-            email: '',
-            address: '',
-            serviceType: '',
-            description: '',
-            preferredDate: '',
-            budget: '',
-          }}
+          initialValues={initialValues}
+          enableReinitialize
           validationSchema={HireSchema}
           onSubmit={handleSubmit}
         >
@@ -106,7 +129,7 @@ export const HireFormScreen = ({ route, navigation }) => {
                   <View style={styles.professionalInfo}>
                     <Ionicons name="person-circle" size={48} color={colors.white} />
                     <View style={styles.professionalDetails}>
-                      <Text style={styles.professionalName}>{professional.name}</Text>
+                      <Text style={styles.professionalName}>{professional.displayName || professional.name || 'Profesional'}</Text>
                       <Text style={styles.professionalProfession}>{professional.profession}</Text>
                       <View style={styles.ratingRow}>
                         <Ionicons name="star" size={14} color="#FFD700" />
@@ -118,67 +141,7 @@ export const HireFormScreen = ({ route, navigation }) => {
 
                 {/* Formulario */}
                 <View style={styles.formSection}>
-                  <Text style={styles.sectionTitle}>Datos de contacto</Text>
-
-                  {/* Nombre completo */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Nombre completo *</Text>
-                    <View style={[styles.inputContainer, touched.fullName && errors.fullName && styles.inputError]}>
-                      <Ionicons name="person-outline" size={20} color={colors.white} style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Ej: Juan Pérez"
-                        placeholderTextColor="rgba(255,255,255,0.5)"
-                        value={values.fullName}
-                        onChangeText={handleChange('fullName')}
-                        onBlur={handleBlur('fullName')}
-                      />
-                    </View>
-                    {touched.fullName && errors.fullName && (
-                      <Text style={styles.errorText}>{errors.fullName}</Text>
-                    )}
-                  </View>
-
-                  {/* Teléfono */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Teléfono *</Text>
-                    <View style={[styles.inputContainer, touched.phone && errors.phone && styles.inputError]}>
-                      <Ionicons name="call-outline" size={20} color={colors.white} style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Ej: +54 9 11 1234-5678"
-                        placeholderTextColor="rgba(255,255,255,0.5)"
-                        value={values.phone}
-                        onChangeText={handleChange('phone')}
-                        onBlur={handleBlur('phone')}
-                        keyboardType="phone-pad"
-                      />
-                    </View>
-                    {touched.phone && errors.phone && (
-                      <Text style={styles.errorText}>{errors.phone}</Text>
-                    )}
-                  </View>
-
-                  {/* Email */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Email *</Text>
-                    <View style={[styles.inputContainer, touched.email && errors.email && styles.inputError]}>
-                      <Ionicons name="mail-outline" size={20} color={colors.white} style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="tu@email.com"
-                        placeholderTextColor="rgba(255,255,255,0.5)"
-                        value={values.email}
-                        onChangeText={handleChange('email')}
-                        onBlur={handleBlur('email')}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                      />
-                    </View>
-                    {touched.email && errors.email && (
-                      <Text style={styles.errorText}>{errors.email}</Text>
-                    )}
-                  </View>
+                  <Text style={styles.sectionTitle}>Detalles del servicio</Text>
 
                   {/* Dirección */}
                   <View style={styles.inputGroup}>
@@ -198,11 +161,6 @@ export const HireFormScreen = ({ route, navigation }) => {
                       <Text style={styles.errorText}>{errors.address}</Text>
                     )}
                   </View>
-                </View>
-
-                {/* Detalles del servicio */}
-                <View style={styles.formSection}>
-                  <Text style={styles.sectionTitle}>Detalles del servicio</Text>
 
                   {/* Tipo de servicio */}
                   <View style={styles.inputGroup}>
@@ -272,34 +230,14 @@ export const HireFormScreen = ({ route, navigation }) => {
                       <Text style={styles.errorText}>{errors.preferredDate}</Text>
                     )}
                   </View>
-
-                  {/* Presupuesto estimado */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Presupuesto estimado (ARS) *</Text>
-                    <View style={[styles.inputContainer, touched.budget && errors.budget && styles.inputError]}>
-                      <Ionicons name="cash-outline" size={20} color={colors.white} style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Ej: 15000"
-                        placeholderTextColor="rgba(255,255,255,0.5)"
-                        value={values.budget}
-                        onChangeText={handleChange('budget')}
-                        onBlur={handleBlur('budget')}
-                        keyboardType="numeric"
-                      />
-                    </View>
-                    {touched.budget && errors.budget && (
-                      <Text style={styles.errorText}>{errors.budget}</Text>
-                    )}
-                  </View>
                 </View>
 
                 {/* Nota informativa */}
                 <View style={styles.infoBox}>
                   <Ionicons name="information-circle" size={24} color={colors.white} />
                   <Text style={styles.infoText}>
-                    El profesional recibirá tu solicitud y se pondrá en contacto para confirmar
-                    disponibilidad y presupuesto final.
+                    El profesional recibirá tu solicitud y se pondrá en contacto contigo para coordinar
+                    disponibilidad, presupuesto y detalles del servicio.
                   </Text>
                 </View>
               </ScrollView>
@@ -308,7 +246,7 @@ export const HireFormScreen = ({ route, navigation }) => {
               <View style={styles.footer}>
                 <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
                   <Ionicons name="checkmark-circle" size={24} color={colors.white} />
-                  <Text style={styles.submitButtonText}>Continuar al pago</Text>
+                  <Text style={styles.submitButtonText}>Enviar solicitud</Text>
                 </TouchableOpacity>
               </View>
             </>

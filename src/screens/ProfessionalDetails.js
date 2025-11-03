@@ -1,16 +1,47 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
-import { professionals } from '../assets/data/plomerosdata';
+import { professionalsApi, reviewsApi } from '../api';
 
 export const ProfessionalDetails = ({ route, navigation }) => {
   const { professionalId } = route.params;
-  const professional = professionals.find(p => p.id === professionalId);
+  const [professional, setProfessional] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    const loadProfessional = async () => {
+      try {
+        const profile = await professionalsApi.getById(professionalId);
+        setProfessional(profile);
+        const reviewsResponse = await reviewsApi.listByProfessional(professionalId, { page: 0, size: 20 });
+        const reviewsContent = Array.isArray(reviewsResponse?.content) ? reviewsResponse.content : [];
+        setReviews(reviewsContent);
+      } catch (error) {
+        console.error('Error loading professional details', error);
+        Alert.alert('No se pudo cargar el perfil del profesional');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfessional();
+  }, [professionalId]);
+
+  if (loading) {
+    return (
+      <LinearGradient colors={[colors.primaryBlue, colors.secondaryBlue]} style={styles.centered}>
+        <StatusBar style="light" />
+        <ActivityIndicator color={colors.white} />
+        <Text style={styles.loadingText}>Cargando profesional...</Text>
+      </LinearGradient>
+    );
+  }
 
   if (!professional) {
     return (
@@ -61,35 +92,39 @@ export const ProfessionalDetails = ({ route, navigation }) => {
         {/* Card del perfil */}
         <View style={styles.profileCard}>
           <View style={styles.profileImageContainer}>
-            <Image source={professional.image} style={styles.profileImage} />
+            <Image source={require('../assets/images/plomero1.png')} style={styles.profileImage} />
             <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={28} color={colors.greenButton} />
+              <Ionicons
+                name={professional.verificationStatus?.faceVerified ? "checkmark-circle" : "alert-circle"}
+                size={28}
+                color={professional.verificationStatus?.faceVerified ? colors.greenButton : colors.error}
+              />
             </View>
           </View>
-          
-          <Text style={styles.name}>{professional.name}</Text>
-          
+
+          <Text style={styles.name}>{professional.displayName || professional.name}</Text>
+
           <View style={styles.professionBadge}>
             <Ionicons name="briefcase" size={16} color={colors.white} />
             <Text style={styles.professionText}>{professional.profession}</Text>
           </View>
-          
+
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Ionicons name="star" size={20} color="#FFD700" />
-              <Text style={styles.statValue}>{professional.rating}</Text>
+              <Text style={styles.statValue}>{professional.rating ?? 'N/D'}</Text>
               <Text style={styles.statLabel}>Calificación</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Ionicons name="briefcase-outline" size={20} color={colors.white} />
-              <Text style={styles.statValue}>{professional.experience}</Text>
+              <Text style={styles.statValue}>{professional.experienceYears ?? 0}</Text>
               <Text style={styles.statLabel}>Años exp.</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={20} color={colors.white} />
-              <Text style={styles.statValue}>{professional.opinions.length}</Text>
+              <Text style={styles.statValue}>{professional.reviewsCount ?? reviews.length}</Text>
               <Text style={styles.statLabel}>Opiniones</Text>
             </View>
           </View>
@@ -101,7 +136,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
             <Ionicons name="person-circle-outline" size={24} color={colors.white} />
             <Text style={styles.sectionTitle}>Sobre mí</Text>
           </View>
-          <Text style={styles.sectionText}>{professional.historia}</Text>
+          <Text style={styles.sectionText}>{professional.biography || 'Sin descripción disponible.'}</Text>
         </View>
 
         {/* Sección: Servicios */}
@@ -110,12 +145,15 @@ export const ProfessionalDetails = ({ route, navigation }) => {
             <Ionicons name="construct-outline" size={24} color={colors.white} />
             <Text style={styles.sectionTitle}>Servicios que ofrezco</Text>
           </View>
-          {professional.services.map((service, index) => (
+          {(professional.services || []).map((service, index) => (
             <View key={index} style={styles.serviceItem}>
               <Ionicons name="checkmark-circle" size={20} color={colors.greenButton} />
               <Text style={styles.serviceText}>{service}</Text>
             </View>
           ))}
+          {(!professional.services || professional.services.length === 0) && (
+            <Text style={styles.sectionText}>Sin servicios detallados.</Text>
+          )}
         </View>
 
         {/* Sección: Contacto */}
@@ -126,11 +164,11 @@ export const ProfessionalDetails = ({ route, navigation }) => {
           </View>
           <View style={styles.contactItem}>
             <Ionicons name="call" size={18} color={colors.white} />
-            <Text style={styles.contactText}>{professional.contact.phone}</Text>
+            <Text style={styles.contactText}>{professional.contactPhone || 'No disponible'}</Text>
           </View>
           <View style={styles.contactItem}>
             <Ionicons name="mail" size={18} color={colors.white} />
-            <Text style={styles.contactText}>{professional.contact.email}</Text>
+            <Text style={styles.contactText}>{professional.contactEmail || 'No disponible'}</Text>
           </View>
         </View>
 
@@ -140,24 +178,33 @@ export const ProfessionalDetails = ({ route, navigation }) => {
             <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.white} />
             <Text style={styles.sectionTitle}>Opiniones de clientes</Text>
           </View>
-          {professional.opinions.map((opinion, index) => (
-            <View key={index} style={styles.opinionCard}>
-              <View style={styles.opinionHeader}>
-                <View style={styles.opinionAvatar}>
-                  <Ionicons name="person" size={20} color={colors.white} />
-                </View>
-                <View style={styles.opinionInfo}>
-                  <Text style={styles.opinionUser}>{opinion.user}</Text>
-                  <View style={styles.starsRow}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Ionicons key={star} name="star" size={14} color="#FFD700" />
-                    ))}
+          {reviews.length === 0 ? (
+            <Text style={styles.sectionText}>Aún no hay opiniones para este profesional.</Text>
+          ) : (
+            reviews.map((opinion) => (
+              <View key={opinion.id} style={styles.opinionCard}>
+                <View style={styles.opinionHeader}>
+                  <View style={styles.opinionAvatar}>
+                    <Ionicons name="person" size={20} color={colors.white} />
+                  </View>
+                  <View style={styles.opinionInfo}>
+                    <Text style={styles.opinionUser}>{opinion.userDisplayName || opinion.userId}</Text>
+                    <View style={styles.starsRow}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Ionicons
+                          key={star}
+                          name={star <= opinion.rating ? "star" : "star-outline"}
+                          size={14}
+                          color="#FFD700"
+                        />
+                      ))}
+                    </View>
                   </View>
                 </View>
+                <Text style={styles.opinionText}>{opinion.comment}</Text>
               </View>
-              <Text style={styles.opinionText}>{opinion.comment}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
         {/* Espaciado inferior */}
@@ -171,11 +218,13 @@ export const ProfessionalDetails = ({ route, navigation }) => {
           onPress={() =>
             navigation.navigate('Chat', {
               professional: {
-                name: professional.name,
+                id: professional.id,
+                name: professional.displayName || professional.name,
                 profession: professional.profession,
-                avatar: professional.image,
+                avatar: null,
               },
-              jobSummary: `Consulta sobre ${professional.profession.toLowerCase()}`,
+              jobSummary: `Consulta sobre ${professional.profession?.toLowerCase?.() || 'el servicio'}`,
+              serviceOrderId: null,
             })
           }
         >
@@ -202,6 +251,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+  },
+  loadingText: {
+    color: colors.white,
+    marginTop: 12,
   },
   errorText: {
     color: colors.white,

@@ -21,3 +21,5 @@ Thumbs.db
 # Android / iOS build artifacts
 android/
 ios/
+
+.idea

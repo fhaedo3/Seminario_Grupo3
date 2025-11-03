@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -10,12 +10,16 @@ import {
     KeyboardAvoidingView,
     Keyboard,
     Image,
+    ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '../components/BackButton';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
+import { messagesApi } from '../api';
 
 const fallbackProfessional = {
     name: 'Jonathan Leguizamón',
@@ -39,36 +43,100 @@ export const ChatScreen = ({ navigation, route }) => {
     const professional = route?.params?.professional ?? fallbackProfessional;
     const jobSummary = route?.params?.jobSummary ?? 'Detalle del trabajo';
     const conversationSeed = route?.params?.initialMessages ?? fallbackMessages;
+    const serviceOrderId = route?.params?.serviceOrderId ?? null;
+    const { token, user, username } = useAuth();
 
     const [messages, setMessages] = useState(() => [...conversationSeed]);
     const [inputText, setInputText] = useState('');
+    const [loadingMessages, setLoadingMessages] = useState(false);
+    const [sending, setSending] = useState(false);
     const scrollViewRef = useRef();
 
-    const handleSend = () => {
-        if (inputText.trim() === '') return;
-        const newMessage = {
-            id: messages.length + 1,
-            text: inputText,
-            sender: 'user',
-        };
-        setMessages([...messages, newMessage]);
-        setInputText('');
-        Keyboard.dismiss();
-    };
+    const avatarSource = professional.avatar || require('../assets/images/plomero1.png');
+    const professionalName = professional.name || professional.displayName || 'Profesional';
+    const professionalProfession = professional.profession || 'Especialista';
+
+    const senderId = useMemo(() => user?.id || username || 'usuario', [user?.id, username]);
+    const canSendMessages = Boolean(serviceOrderId && token);
 
     useEffect(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
     }, [messages]);
 
     useEffect(() => {
-        setMessages(Array.isArray(conversationSeed) ? [...conversationSeed] : []);
-    }, [conversationSeed]);
+        if (!serviceOrderId || !token) {
+            setMessages(Array.isArray(conversationSeed) ? [...conversationSeed] : []);
+            return;
+        }
+
+        setLoadingMessages(true);
+        messagesApi
+            .list(token, serviceOrderId, { page: 0, size: 100 })
+            .then((response) => {
+                const loadedMessages = Array.isArray(response?.content)
+                    ? response.content.map((msg) => ({
+                          id: msg.id,
+                          text: msg.content,
+                          sender: msg.senderType === 'USER' ? 'user' : 'professional',
+                          createdAt: msg.createdAt,
+                      }))
+                    : [];
+                setMessages(loadedMessages);
+            })
+            .catch((error) => {
+                console.error('Error fetching chat messages', error);
+                Alert.alert('No se pudieron cargar los mensajes, mostrando historial local.');
+                setMessages(Array.isArray(conversationSeed) ? [...conversationSeed] : []);
+            })
+            .finally(() => {
+                setLoadingMessages(false);
+            });
+    }, [conversationSeed, serviceOrderId, token]);
+
+    const handleSend = () => {
+        if (inputText.trim() === '') {
+            return;
+        }
+
+        if (!canSendMessages) {
+            Alert.alert('No puedes enviar mensajes todavía', 'Creá una solicitud para activar el chat.');
+            return;
+        }
+
+        const payload = {
+            senderType: 'USER',
+            senderId,
+            content: inputText,
+        };
+
+        setSending(true);
+        messagesApi
+            .send(token, serviceOrderId, payload)
+            .then((response) => {
+                const newMessage = {
+                    id: response.id,
+                    text: response.content,
+                    sender: response.senderType === 'USER' ? 'user' : 'professional',
+                    createdAt: response.createdAt,
+                };
+                setMessages((prev) => [...prev, newMessage]);
+                setInputText('');
+                Keyboard.dismiss();
+            })
+            .catch((error) => {
+                console.error('Error sending message', error);
+                Alert.alert('No se pudo enviar el mensaje', error?.message ?? 'Intentá nuevamente más tarde.');
+            })
+            .finally(() => {
+                setSending(false);
+            });
+    };
 
     const MessageBubble = ({ msg }) => {
         const isUser = msg.sender === 'user';
         return (
-            <View style={[styles.messageRow, { justifyContent: isUser ? 'flex-end' : 'flex-start' }]}>
-                {!isUser && <Image source={professional.avatar} style={styles.avatar} />}
+            <View style={[styles.messageRow, { justifyContent: isUser ? 'flex-end' : 'flex-start' }]}>            
+                {!isUser && <Image source={avatarSource} style={styles.avatar} />}
                 <View
                     style={[
                         styles.messageBubble,
@@ -92,7 +160,6 @@ export const ChatScreen = ({ navigation, route }) => {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    {/* TODO CAMBIAR POR COMPONENTE DE MIS TRABAJOS CUANDO ESTE */}
                     <BackButton
                         navigation={navigation}
                         fallbackRoute="MyJobs"
@@ -100,10 +167,10 @@ export const ChatScreen = ({ navigation, route }) => {
                         iconSize={28}
                         backgroundColor="transparent"
                     />
-                    <Image source={professional.avatar} style={styles.headerAvatar} />
+                    <Image source={avatarSource} style={styles.headerAvatar} />
                     <View>
-                        <Text style={styles.headerTitle}>{professional.name}</Text>
-                        <Text style={styles.headerSubtitle}>{professional.profession}</Text>
+                        <Text style={styles.headerTitle}>{professionalName}</Text>
+                        <Text style={styles.headerSubtitle}>{professionalProfession}</Text>
                     </View>
                     <View style={styles.headerIcons}>
                         <TouchableOpacity>
@@ -124,26 +191,51 @@ export const ChatScreen = ({ navigation, route }) => {
                     contentContainerStyle={styles.messagesContent}
                     onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                 >
-                    {messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)}
+                    {loadingMessages ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator color={colors.white} />
+                            <Text style={styles.loadingText}>Cargando mensajes...</Text>
+                        </View>
+                    ) : (
+                        messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)
+                    )}
                 </ScrollView>
+
+                {!canSendMessages && (
+                    <View style={styles.chatNotice}>
+                        <Ionicons name="information-circle" size={18} color={colors.white} />
+                        <Text style={styles.chatNoticeText}>
+                            Para continuar el chat necesitás generar una solicitud desde "Contratar".
+                        </Text>
+                    </View>
+                )}
 
                 {/* Input Area */}
                 <View style={styles.inputArea}>
-                    <TouchableOpacity style={styles.iconButton}>
+                    <TouchableOpacity style={styles.iconButton} disabled>
                         <Ionicons name="add-circle-outline" size={28} color={colors.mutedText} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
+                    <TouchableOpacity style={styles.iconButton} disabled>
                         <Ionicons name="happy-outline" size={28} color={colors.mutedText} />
                     </TouchableOpacity>
                     <TextInput
                         style={styles.input}
-                        placeholder="Escribe un mensaje..."
+                        placeholder={canSendMessages ? "Escribe un mensaje..." : "Crea una solicitud para habilitar el chat"}
                         placeholderTextColor={colors.mutedText}
                         value={inputText}
                         onChangeText={setInputText}
+                        editable={canSendMessages && !sending}
                     />
-                    <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-                        <Ionicons name="send" size={22} color={colors.white} />
+                    <TouchableOpacity
+                        style={[styles.sendButton, (!canSendMessages || sending) && styles.sendButtonDisabled]}
+                        onPress={handleSend}
+                        disabled={!canSendMessages || sending}
+                    >
+                        {sending ? (
+                            <ActivityIndicator color={colors.white} size="small" />
+                        ) : (
+                            <Ionicons name="send" size={22} color={colors.white} />
+                        )}
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
@@ -213,6 +305,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 20,
     },
+    loadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 20,
+        gap: 12,
+    },
+    loadingText: {
+        color: colors.white,
+        opacity: 0.8,
+    },
     messageRow: {
         flexDirection: 'row',
         alignItems: 'flex-end',
@@ -247,6 +349,20 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         marginBottom: 5,
     },
+    chatNotice: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+    },
+    chatNoticeText: {
+        color: colors.white,
+        flex: 1,
+        fontSize: 13,
+        opacity: 0.9,
+    },
     inputArea: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -273,5 +389,8 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    sendButtonDisabled: {
+        opacity: 0.6,
     },
 });

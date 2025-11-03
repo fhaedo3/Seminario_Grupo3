@@ -4,23 +4,28 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoginForm } from '../components/LoginForm';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 
 export const LoginScreen = ({ navigation }) => {
+  const { login } = useAuth();
   const [authError, setAuthError] = useState('');
 
-  const handleLogin = (values) => {
+  const handleLogin = async (values) => {
     const username = values.username?.trim();
     const password = values.password;
     if (!username || !password) {
       setAuthError('Ingresa tus credenciales para continuar');
-      return;
+      throw new Error('Credenciales incompletas');
     }
 
     setAuthError('');
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Homepage', params: { userName: username.split(' ')[0] } }],
-    });
+    try {
+      await login(username, password);
+    } catch (error) {
+      const message = error?.message ?? 'No se pudo iniciar sesión';
+      setAuthError(message);
+      throw error;
+    }
   };
 
   const handleRegister = () => {

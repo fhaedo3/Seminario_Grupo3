@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,15 +9,16 @@ import {
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
-import { professionals } from "../assets/data/plomerosdata";
 import { FilterModal } from '../components/ProfessionalsFilters';
 import { BackButton } from '../components/BackButton';
 import { BottomNav } from '../components/BottomNav';
+import { professionalsApi } from '../api';
 
 export const SearchProfessionalsScreen = ({ navigation }) => {
 
@@ -30,14 +31,19 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
     setFilterModalVisible(false);
   }
 
-  const [searchTerm, setSearchTerm] = useState("Plomero");
+  const [searchTerm, setSearchTerm] = useState('');
   const [favorites, setFavorites] = useState(new Set());
-  const [filterModalVisible, setFilterModalVisible] = useState(false); 
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filters, setFilters] = useState({
     distance: 'Cualquier distancia',
     profession: 'Todas',
     other: 'Todos',
   });
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [professionOptions, setProfessionOptions] = useState([]);
+  const [tagOptions, setTagOptions] = useState([]);
 
   const toggleFavorite = (id) => {
     const newFavorites = new Set(favorites);
@@ -70,16 +76,79 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
     }
   };
 
-  const filteredProfessionals = professionals.filter((prof) => {
-    const term = (searchTerm || '').toLowerCase();
-    const matchesTerm = prof.name?.toLowerCase().includes(term) || prof.profession?.toLowerCase().includes(term);
+  const maxDistanceParam = useMemo(() => {
+    switch (filters.distance) {
+      case '< 5 km':
+        return 5;
+      case '5-10 km':
+        return 10;
+      case '10-25 km':
+        return 25;
+      default:
+        return undefined;
+    }
+  }, [filters.distance]);
 
-    const matchesProfession = filters.profession === 'Todas' ? true : prof.profession === filters.profession;
-    const matchesDistance = matchesDistanceFilter(prof.distanceKm ?? 0, filters.distance);
-    const matchesOther = filters.other === 'Todos' ? true : prof.tags?.includes(filters.other);
+  const fetchProfessionals = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = {
+        page: 0,
+        size: 30,
+      };
 
-    return matchesTerm && matchesProfession && matchesDistance && matchesOther;
-  });
+      if (searchTerm?.trim()) {
+        params.search = searchTerm.trim();
+      }
+      if (filters.profession && filters.profession !== 'Todas') {
+        params.profession = filters.profession;
+      }
+      if (filters.other && filters.other !== 'Todos') {
+        params.tag = filters.other;
+      }
+      if (maxDistanceParam) {
+        params.maxDistance = maxDistanceParam;
+      }
+
+      const response = await professionalsApi.search(params);
+      const content = Array.isArray(response?.content) ? response.content : [];
+      setResults(content);
+
+      const professionsSet = new Set();
+      const tagsSet = new Set();
+      content.forEach((item) => {
+        if (item.profession) {
+          professionsSet.add(item.profession);
+        }
+        if (Array.isArray(item.tags)) {
+          item.tags.forEach((tag) => tagsSet.add(tag));
+        }
+      });
+      setProfessionOptions(Array.from(professionsSet));
+      setTagOptions(Array.from(tagsSet));
+    } catch (err) {
+      console.error('Error fetching professionals', err);
+      setError(err?.message ?? 'No se pudieron cargar los profesionales');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters.other, filters.profession, maxDistanceParam, searchTerm]);
+
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      fetchProfessionals();
+    }, 350);
+
+    return () => clearTimeout(debounce);
+  }, [fetchProfessionals]);
+
+  const filteredProfessionals = useMemo(() => {
+    return results.filter((prof) => {
+      const distanceOk = matchesDistanceFilter(prof.distanceKm ?? 0, filters.distance);
+      return distanceOk;
+    });
+  }, [results, filters.distance]);
 
   return (
     <LinearGradient
@@ -112,7 +181,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
             />
             <TextInput
               style={styles.searchInput}
-              placeholder="Plomero"
+              placeholder="Buscar por oficio o nombre"
               placeholderTextColor="#999"
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -129,64 +198,80 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {filteredProfessionals.map((prof) => (
-            <View key={prof.id} style={styles.card}>
-              <View style={styles.cardContent}>
-                <Image source={prof.image} style={styles.profileImage} />
-                <View style={styles.infoContainer}>
-                  <View style={styles.headerRow}>
-                    <View style={styles.textContainer}>
-                      <Text style={styles.name}>{prof.name}</Text>
-                      <Text style={styles.profession}>
-                        {prof.profession} - {prof.experience} Año
-                        {prof.experience !== 1 ? "s" : ""} de Exp
-                      </Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={colors.white} />
+              <Text style={styles.loadingText}>Buscando profesionales...</Text>
+            </View>
+          ) : filteredProfessionals.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="search" size={40} color={colors.white} />
+              <Text style={styles.emptyTitle}>No encontramos profesionales</Text>
+              <Text style={styles.emptySubtitle}>Ajustá los filtros o intentá con otro término</Text>
+            </View>
+          ) : (
+            filteredProfessionals.map((prof) => (
+              <View key={prof.id} style={styles.card}>
+                <View style={styles.cardContent}>
+                  <Image source={require('../assets/images/plomero1.png')} style={styles.profileImage} />
+                  <View style={styles.infoContainer}>
+                    <View style={styles.headerRow}>
+                      <View style={styles.textContainer}>
+                        <Text style={styles.name}>{prof.displayName || prof.name}</Text>
+                        <Text style={styles.profession}>
+                          {prof.profession} - {prof.experienceYears ?? 0} Año
+                          {(prof.experienceYears ?? 0) !== 1 ? "s" : ""} de Exp
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => toggleFavorite(prof.id)}
+                        style={styles.starButton}
+                      >
+                        <Ionicons
+                          name={favorites.has(prof.id) ? "star" : "star-outline"}
+                          size={24}
+                          color="#FFD700"
+                        />
+                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                      onPress={() => toggleFavorite(prof.id)}
-                      style={styles.starButton}
-                    >
-                      <Ionicons
-                        name={favorites.has(prof.id) ? "star" : "star-outline"}
-                        size={24}
-                        color="#FFD700"
-                      />
-                    </TouchableOpacity>
+                    <Text style={styles.description}>{prof.summary || 'Consultá para conocer más detalles.'}</Text>
                   </View>
-                  <Text style={styles.description}>{prof.description}</Text>
+                </View>
+                <View style={styles.actionsRow}>
+                  <TouchableOpacity
+                    style={styles.primaryAction}
+                    onPress={() =>
+                      navigation.navigate('Chat', {
+                        professional: {
+                          id: prof.id,
+                          name: prof.displayName || prof.name,
+                          profession: prof.profession,
+                          avatar: null,
+                        },
+                        jobSummary: `Consulta sobre ${prof.profession?.toLowerCase?.() || 'el servicio'}`,
+                        serviceOrderId: null,
+                      })
+                    }
+                  >
+                    <Ionicons name="chatbubble-ellipses" size={18} color={colors.white} />
+                    <Text style={styles.primaryActionText}>Chatear</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.secondaryAction}
+                    onPress={() =>
+                      navigation.navigate('ProfessionalDetails', {
+                        professionalId: prof.id,
+                      })
+                    }
+                  >
+                    <Ionicons name="person-circle-outline" size={18} color={colors.white} />
+                    <Text style={styles.secondaryActionText}>Ver perfil</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.actionsRow}>
-                <TouchableOpacity
-                  style={styles.primaryAction}
-                  onPress={() =>
-                    navigation.navigate('Chat', {
-                      professional: {
-                        name: prof.name,
-                        profession: prof.profession,
-                        avatar: prof.image,
-                      },
-                      jobSummary: `Consulta sobre ${prof.profession.toLowerCase()}`,
-                    })
-                  }
-                >
-                  <Ionicons name="chatbubble-ellipses" size={18} color={colors.white} />
-                  <Text style={styles.primaryActionText}>Chatear</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.secondaryAction}
-                  onPress={() =>
-                    navigation.navigate('ProfessionalDetails', {
-                      professionalId: prof.id, // ← pasamos el ID del profesional
-                    })
-                  }
-                >
-                  <Ionicons name="person-circle-outline" size={18} color={colors.white} />
-                  <Text style={styles.secondaryActionText}>Ver perfil</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+            ))
+          )}
+          {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
         </ScrollView>
 
         <BottomNav
@@ -202,6 +287,8 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
         onClose={() => setFilterModalVisible(false)}
         onApplyFilters={handleApplyFilters}
         initialFilters={filters}
+        professionOptions={professionOptions}
+        tagOptions={tagOptions}
       />
     </LinearGradient>
   );
@@ -275,6 +362,36 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 12,
+  },
+  loadingText: {
+    color: colors.white,
+    opacity: 0.8,
+  },
+  errorMessage: {
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 40,
+  },
+  emptyTitle: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  emptySubtitle: {
+    color: colors.mutedText,
+    fontSize: 14,
+    textAlign: 'center',
   },
   cardContent: {
     flexDirection: "row",

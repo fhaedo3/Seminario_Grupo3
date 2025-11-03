@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
@@ -16,6 +17,8 @@ import { colors } from "../theme/colors";
 import { BottomNav } from '../components/BottomNav';
 import { BackButton } from '../components/BackButton';
 import { showSuccessToast } from '../utils/notifications';
+import { useAuth } from '../context/AuthContext';
+import { usersApi, authApi } from '../api';
 
 const PAYMENT_METHODS_OPTIONS = [
   { id: "efectivo", label: "Efectivo", icon: "cash" },
@@ -25,12 +28,8 @@ const PAYMENT_METHODS_OPTIONS = [
   { id: "transferencia", label: "Transferencia Bancaria", icon: "swap-horizontal" },
 ];
 
-const NAME_REGEX = /^[a-zA-ZÁÉÍÓÚÑáéíóúñ\s'-]{3,60}$/;
-const LOCATION_REGEX = /^[a-zA-ZÁÉÍÓÚÑáéíóúñ0-9.,\s-]{3,80}$/;
-const PHONE_REGEX = /^\+?\d{7,15}$/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export const ProfileUserScreen = ({ navigation }) => {
+  const { user, token, logout, fetchProfile } = useAuth();
   const [formData, setFormData] = useState({
     fullName: "",
     location: "",
@@ -40,128 +39,180 @@ export const ProfileUserScreen = ({ navigation }) => {
 
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [expandedSection, setExpandedSection] = useState(null);
-  const [formErrors, setFormErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Cargar datos del usuario desde el backend
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      
+      // Timeout para evitar carga infinita (2 segundos)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 2000)
+      );
+      
+      if (token) {
+        try {
+          // Intentar obtener datos actualizados del backend con timeout
+          const userData = await Promise.race([
+            authApi.me(token),
+            timeoutPromise
+          ]);
+          
+          setFormData({
+            fullName: userData.fullName || "",
+            location: userData.location || "",
+            phone: userData.phone || "",
+            email: userData.email || "",
+          });
+          setPaymentMethods(userData.preferredPaymentMethods || []);
+        } catch (apiError) {
+          // Backend no disponible, usar datos del contexto silenciosamente
+          fallbackToLocalData();
+        }
+      } else {
+        // Si no hay token, usar datos del contexto o datos vacíos
+        fallbackToLocalData();
+      }
+    } catch (error) {
+      // Error general, usar datos locales silenciosamente
+      fallbackToLocalData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fallbackToLocalData = () => {
+    if (user) {
+      setFormData({
+        fullName: user.fullName || "",
+        location: user.location || "",
+        phone: user.phone || "",
+        email: user.email || "",
+      });
+      setPaymentMethods(user.preferredPaymentMethods || []);
+    } else {
+      // Datos completamente vacíos si no hay usuario
+      setFormData({
+        fullName: "",
+        location: "",
+        phone: "",
+        email: "",
+      });
+      setPaymentMethods([]);
+    }
+  };
+
+  // Cargar datos del usuario cuando el componente se monta
+  useEffect(() => {
+    // Cargar inmediatamente los datos del contexto si están disponibles
+    if (user) {
+      fallbackToLocalData();
+      setLoading(false);
+    }
+    
+    // Luego intentar actualizar desde el backend en segundo plano
+    if (token) {
+      loadUserData();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  // Actualizar datos cuando el usuario del contexto cambie
+  useEffect(() => {
+    if (user && !loading) {
+      setFormData(prevData => ({
+        fullName: prevData.fullName || user.fullName || "",
+        location: prevData.location || user.location || "",
+        phone: prevData.phone || user.phone || "",
+        email: prevData.email || user.email || "",
+      }));
+      if (user.preferredPaymentMethods && user.preferredPaymentMethods.length > 0) {
+        setPaymentMethods(user.preferredPaymentMethods);
+      }
+    }
+  }, [user]);
 
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
   const togglePaymentMethod = (methodId) => {
-    setPaymentMethods((prev) => {
-      const updated = prev.includes(methodId)
+    setPaymentMethods((prev) =>
+      prev.includes(methodId)
         ? prev.filter((m) => m !== methodId)
-        : [...prev, methodId];
-
-      if (updated.length > 0) {
-        setFormErrors((errors) => {
-          if (!errors.paymentMethods) {
-            return errors;
-          }
-          const { paymentMethods: _omit, ...rest } = errors;
-          return rest;
-        });
-      }
-
-      return updated;
-    });
+        : [...prev, methodId]
+    );
   };
 
-  const clearError = (field) => {
-    setFormErrors((prev) => {
-      if (!prev[field]) {
-        return prev;
-      }
-      const { [field]: _removed, ...rest } = prev;
-      return rest;
-    });
-  };
-
-  const validateField = (field, rawValue) => {
-    const value = rawValue?.trim?.() ?? "";
-
-    switch (field) {
-      case "fullName":
-        if (!value) {
-          return "Ingresa tu nombre completo";
-        }
-        if (!NAME_REGEX.test(value)) {
-          return "Usa solo letras y entre 3 y 60 caracteres";
-        }
-        return null;
-      case "location":
-        if (!value) {
-          return "Ingresa tu ubicación";
-        }
-        if (!LOCATION_REGEX.test(value)) {
-          return "La ubicación contiene caracteres inválidos";
-        }
-        return null;
-      case "phone":
-        if (!value) {
-          return "Ingresa tu teléfono";
-        }
-        if (!PHONE_REGEX.test(value)) {
-          return "Ingresa un teléfono válido (7 a 15 dígitos)";
-        }
-        return null;
-      case "email":
-        if (!value) {
-          return "Ingresa tu correo electrónico";
-        }
-        if (!EMAIL_REGEX.test(value)) {
-          return "Ingresa un correo electrónico válido";
-        }
-        return null;
-      default:
-        return null;
+  const handleSave = async () => {
+    // Validaciones básicas
+    if (!formData.fullName.trim()) {
+      Alert.alert('Error', 'El nombre completo es obligatorio');
+      return;
     }
-  };
-
-  const handleInputChange = (field) => (text) => {
-    setFormData((prev) => ({ ...prev, [field]: text }));
-
-    if (formErrors[field]) {
-      const fieldError = validateField(field, text);
-      if (fieldError) {
-        setFormErrors((prev) => ({ ...prev, [field]: fieldError }));
-        return;
-      }
-      clearError(field);
+    
+    if (!formData.location.trim()) {
+      Alert.alert('Error', 'La ubicación es obligatoria');
+      return;
     }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    Object.entries(formData).forEach(([field, value]) => {
-      const fieldError = validateField(field, value);
-      if (fieldError) {
-        newErrors[field] = fieldError;
-      }
-    });
-
-    if (paymentMethods.length === 0) {
-      newErrors.paymentMethods = "Seleccioná al menos un método de pago";
+    
+    if (!formData.phone.trim()) {
+      Alert.alert('Error', 'El teléfono es obligatorio');
+      return;
     }
-
-    return newErrors;
-  };
-
-  const handleSave = () => {
-    const newErrors = validateForm();
-
-    if (Object.keys(newErrors).length > 0) {
-      setFormErrors(newErrors);
-      Alert.alert('Revisa los datos', 'Corregí los campos marcados antes de guardar.');
+    
+    if (!formData.email.trim()) {
+      Alert.alert('Error', 'El email es obligatorio');
       return;
     }
 
-    console.log("Guardando cambios:", formData);
-    console.log("Métodos de pago:", paymentMethods);
-    setFormErrors({});
-    showSuccessToast('Datos guardados correctamente');
-    // Aquí iría la lógica para guardar los cambios
+    setSaving(true);
+    
+    try {
+      const profileData = {
+        fullName: formData.fullName.trim(),
+        location: formData.location.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
+        preferredPaymentMethods: paymentMethods,
+      };
+
+      // Enviar al backend
+      await usersApi.updateProfile(token, profileData);
+      
+      // Refrescar datos del usuario
+      if (fetchProfile) {
+        await fetchProfile();
+      }
+      
+      showSuccessToast('Datos guardados correctamente');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', error.message || 'No se pudo guardar el perfil. Intenta nuevamente.');
+    } finally {
+      setSaving(false);
+    }
   };
+
+
+
+  if (loading) {
+    return (
+      <LinearGradient
+        colors={[colors.primaryBlue, colors.secondaryBlue]}
+        style={styles.background}
+      >
+        <StatusBar style="light" />
+        <View style={[styles.container, styles.loadingContainer]}>
+          <ActivityIndicator size="large" color={colors.white} />
+          <Text style={styles.loadingText}>Cargando perfil...</Text>
+        </View>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -177,12 +228,7 @@ export const ProfileUserScreen = ({ navigation }) => {
             <Text style={styles.headerTitle}>Mi Perfil</Text>
             <TouchableOpacity
               style={styles.logoutButton}
-              onPress={() =>
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Login' }],
-                })
-              }
+              onPress={logout}
             >
               <Ionicons name="log-out-outline" size={20} color={colors.white} />
               <Text style={styles.logoutText}>Salir</Text>
@@ -205,16 +251,10 @@ export const ProfileUserScreen = ({ navigation }) => {
                 <View style={styles.avatarBody} />
               </View>
             </View>
-            <Text style={styles.userName}>Nombre</Text>
+            <Text style={styles.userName}>{user?.fullName || user?.username || 'Usuario'}</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.switchProfileButton}
-            onPress={() => navigation.navigate('ProfileProfessional')}
-          >
-            <Ionicons name="briefcase" size={18} color={colors.white} />
-            <Text style={styles.switchProfileText}>Ir al perfil profesional</Text>
-          </TouchableOpacity>
+
 
           {/* Información Personal Section */}
           <TouchableOpacity
@@ -233,25 +273,23 @@ export const ProfileUserScreen = ({ navigation }) => {
             <View style={styles.sectionContent}>
               <Text style={styles.label}>Nombre Completo</Text>
               <TextInput
-                style={[styles.input, formErrors.fullName && styles.inputError]}
+                style={styles.input}
                 value={formData.fullName}
-                onChangeText={handleInputChange("fullName")}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, fullName: text })
+                }
                 placeholderTextColor="#999"
               />
-              {formErrors.fullName && (
-                <Text style={styles.errorText}>{formErrors.fullName}</Text>
-              )}
 
               <Text style={styles.label}>Ubicacion</Text>
               <TextInput
-                style={[styles.input, formErrors.location && styles.inputError]}
+                style={styles.input}
                 value={formData.location}
-                onChangeText={handleInputChange("location")}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, location: text })
+                }
                 placeholderTextColor="#999"
               />
-              {formErrors.location && (
-                <Text style={styles.errorText}>{formErrors.location}</Text>
-              )}
             </View>
           )}
 
@@ -272,28 +310,26 @@ export const ProfileUserScreen = ({ navigation }) => {
             <View style={styles.sectionContent}>
               <Text style={styles.label}>Telefono</Text>
               <TextInput
-                style={[styles.input, formErrors.phone && styles.inputError]}
+                style={styles.input}
                 value={formData.phone}
-                onChangeText={handleInputChange("phone")}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, phone: text })
+                }
                 keyboardType="phone-pad"
                 placeholderTextColor="#999"
               />
-              {formErrors.phone && (
-                <Text style={styles.errorText}>{formErrors.phone}</Text>
-              )}
 
               <Text style={styles.label}>Email</Text>
               <TextInput
-                style={[styles.input, formErrors.email && styles.inputError]}
+                style={styles.input}
                 value={formData.email}
-                onChangeText={handleInputChange("email")}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, email: text })
+                }
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholderTextColor="#999"
               />
-              {formErrors.email && (
-                <Text style={styles.errorText}>{formErrors.email}</Text>
-              )}
             </View>
           )}
 
@@ -318,9 +354,7 @@ export const ProfileUserScreen = ({ navigation }) => {
               <Text style={styles.infoText}>
                 Puedes seleccionar múltiples opciones
               </Text>
-              {formErrors.paymentMethods && (
-                <Text style={styles.errorText}>{formErrors.paymentMethods}</Text>
-              )}
+
               <View style={styles.paymentMethodsContainer}>
                 {PAYMENT_METHODS_OPTIONS.map((method) => (
                   <TouchableOpacity
@@ -368,8 +402,16 @@ export const ProfileUserScreen = ({ navigation }) => {
           )}
 
           {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
 
@@ -558,6 +600,9 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 20,
   },
+  saveButtonDisabled: {
+    opacity: 0.7,
+  },
   saveButtonText: {
     color: colors.white,
     fontSize: 18,
@@ -607,5 +652,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success,
     justifyContent: "center",
     alignItems: "center",
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: colors.white,
+    fontSize: 16,
+    marginTop: 16,
   },
 });
