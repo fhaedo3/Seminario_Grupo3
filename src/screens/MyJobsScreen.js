@@ -167,7 +167,7 @@ export const MyJobsScreen = ({ navigation }) => {
                     </View>
                   </TouchableOpacity>
                   { 
-                (job.status == 'Finalizado') &&
+                (job.status.toLowerCase() === 'finalizado') &&
                 <TouchableOpacity onPress={() => handleOpenReviewScreen(job)}>
                   <View style={styles.cardFooter}>
                     <Text style={styles.cardFooterText}>Tocar para calificar</Text>
