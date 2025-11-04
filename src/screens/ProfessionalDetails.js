@@ -6,12 +6,46 @@ import { StatusBar } from 'expo-status-bar';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
 import { professionalsApi, reviewsApi } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export const ProfessionalDetails = ({ route, navigation }) => {
   const { professionalId } = route.params;
+  const { user, roles } = useAuth();
   const [professional, setProfessional] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [myProfessionalProfile, setMyProfessionalProfile] = useState(null);
+
+  // Estados para filtros y ordenamiento
+  const [sortBy, setSortBy] = useState('CREATED_AT');
+  const [order, setOrder] = useState('DESC');
+  const [filterByRating, setFilterByRating] = useState(null);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
+  // Función para cargar reviews con filtros y ordenamiento
+  const loadReviews = async (newSortBy, newOrder, newFilterByRating) => {
+    setLoadingReviews(true);
+    try {
+      const params = {
+        page: 0,
+        size: 20,
+        sortBy: newSortBy,
+        order: newOrder
+      };
+
+      if (newFilterByRating !== null) {
+        params.filterByRating = newFilterByRating;
+      }
+
+      const reviewsResponse = await reviewsApi.listByProfessional(professionalId, params);
+      const reviewsContent = Array.isArray(reviewsResponse?.content) ? reviewsResponse.content : [];
+      setReviews(reviewsContent);
+    } catch (error) {
+      console.error('Error loading reviews', error);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   useEffect(() => {
     const loadProfessional = async () => {
@@ -22,6 +56,20 @@ export const ProfessionalDetails = ({ route, navigation }) => {
         const reviewsContent = Array.isArray(reviewsResponse?.content) ? reviewsResponse.content : [];
         console.log('Reviews loaded:', reviewsContent.length);
         setReviews(reviewsContent);
+
+        // Cargar reviews con configuración inicial
+        await loadReviews(sortBy, order, filterByRating);
+
+        // Verificar si el usuario actual es profesional y obtener su perfil
+        if (user && roles.includes('PROFESSIONAL')) {
+          try {
+            const myProfile = await professionalsApi.getByUserId(user.id);
+            setMyProfessionalProfile(myProfile);
+          } catch (error) {
+            // No tiene perfil profesional o error al obtenerlo
+            console.log('No professional profile found for current user');
+          }
+        }
       } catch (error) {
         console.error('Error loading professional details', error);
         Alert.alert('No se pudo cargar el perfil del profesional');
@@ -31,7 +79,20 @@ export const ProfessionalDetails = ({ route, navigation }) => {
     };
 
     loadProfessional();
-  }, [professionalId]);
+  }, [professionalId, user, roles]);
+
+  // Manejar cambios en ordenamiento
+  const handleSortChange = (newSortBy, newOrder) => {
+    setSortBy(newSortBy);
+    setOrder(newOrder);
+    loadReviews(newSortBy, newOrder, filterByRating);
+  };
+
+  // Manejar cambios en filtro de rating
+  const handleFilterChange = (rating) => {
+    setFilterByRating(rating);
+    loadReviews(sortBy, order, rating);
+  };
 
   if (loading) {
     return (
@@ -170,8 +231,84 @@ export const ProfessionalDetails = ({ route, navigation }) => {
             <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.white} />
             <Text style={styles.sectionTitle}>Opiniones de clientes ({reviews.length})</Text>
           </View>
+
+          {/* Controles de ordenamiento y filtrado */}
+          {reviews.length > 0 && (
+            <View style={styles.filtersContainer}>
+              {/* Ordenamiento */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Ordenar por:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
+                  <TouchableOpacity
+                    style={[styles.filterChip, sortBy === 'CREATED_AT' && order === 'DESC' && styles.filterChipActive]}
+                    onPress={() => handleSortChange('CREATED_AT', 'DESC')}
+                  >
+                    <Ionicons name="time-outline" size={14} color={colors.white} />
+                    <Text style={styles.filterChipText}>Más recientes</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterChip, sortBy === 'CREATED_AT' && order === 'ASC' && styles.filterChipActive]}
+                    onPress={() => handleSortChange('CREATED_AT', 'ASC')}
+                  >
+                    <Ionicons name="time-outline" size={14} color={colors.white} />
+                    <Text style={styles.filterChipText}>Más antiguas</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterChip, sortBy === 'RATING' && order === 'DESC' && styles.filterChipActive]}
+                    onPress={() => handleSortChange('RATING', 'DESC')}
+                  >
+                    <Ionicons name="star" size={14} color="#FFD700" />
+                    <Text style={styles.filterChipText}>Mejor calificación</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterChip, sortBy === 'RATING' && order === 'ASC' && styles.filterChipActive]}
+                    onPress={() => handleSortChange('RATING', 'ASC')}
+                  >
+                    <Ionicons name="star-outline" size={14} color="#FFD700" />
+                    <Text style={styles.filterChipText}>Menor calificación</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+
+              {/* Filtro por rating */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Filtrar por estrellas:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
+                  <TouchableOpacity
+                    style={[styles.filterChip, filterByRating === null && styles.filterChipActive]}
+                    onPress={() => handleFilterChange(null)}
+                  >
+                    <Text style={styles.filterChipText}>Todas</Text>
+                  </TouchableOpacity>
+                  {[5, 4, 3, 2, 1].map((rating) => (
+                    <TouchableOpacity
+                      key={rating}
+                      style={[styles.filterChip, filterByRating === rating && styles.filterChipActive]}
+                      onPress={() => handleFilterChange(rating)}
+                    >
+                      <Ionicons name="star" size={14} color="#FFD700" />
+                      <Text style={styles.filterChipText}>{rating}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+          )}
+
+          {/* Indicador de carga */}
+          {loadingReviews && (
+            <View style={styles.loadingReviews}>
+              <ActivityIndicator size="small" color={colors.white} />
+              <Text style={styles.loadingReviewsText}>Actualizando...</Text>
+            </View>
+          )}
+
           {reviews.length === 0 ? (
-            <Text style={styles.sectionText}>Aún no hay opiniones para este profesional.</Text>
+            <Text style={styles.sectionText}>
+              {filterByRating !== null
+                ? `No hay opiniones con ${filterByRating} estrellas.`
+                : 'Aún no hay opiniones para este profesional.'}
+            </Text>
           ) : (
             reviews.map((opinion) => (
               <View key={opinion.id} style={styles.opinionCard}>
@@ -434,6 +571,109 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     opacity: 1,
+  },
+  replyContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+  },
+  replyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  replyLabel: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+    opacity: 0.9,
+  },
+  replyText: {
+    color: colors.white,
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.85,
+    marginBottom: 6,
+  },
+  replyDate: {
+    color: colors.white,
+    fontSize: 11,
+    opacity: 0.6,
+    fontStyle: 'italic',
+  },
+  replyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(33, 150, 243, 0.2)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(33, 150, 243, 0.4)',
+  },
+  replyButtonText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  filtersContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  filterSection: {
+    marginBottom: 12,
+  },
+  filterLabel: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+    opacity: 0.9,
+  },
+  filterScrollView: {
+    flexDirection: 'row',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  filterChipActive: {
+    backgroundColor: colors.greenButton,
+    borderColor: colors.greenButton,
+  },
+  filterChipText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  loadingReviews: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  loadingReviewsText: {
+    color: colors.white,
+    fontSize: 13,
+    opacity: 0.8,
   },
   bottomSpace: {
     height: 80,

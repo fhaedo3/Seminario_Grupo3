@@ -100,6 +100,10 @@ export const MyJobsScreen = ({ navigation }) => {
     });
   };
 
+  const handleOpenReviewScreen = (job) => {
+    navigation.navigate('ReviewProfessional', job)
+  }
+
   return (
     <LinearGradient colors={[colors.primaryBlue, colors.secondaryBlue]} style={styles.background}>
       <StatusBar style="light" />
@@ -129,7 +133,7 @@ export const MyJobsScreen = ({ navigation }) => {
             formattedJobs.map((job) => {
               const status = statusStyles[job.status] ?? statusStyles.PENDING;
               return (
-                <TouchableOpacity key={job.id} style={styles.card} onPress={() => handleOpenChat(job)}>
+                <View key={job.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <Image source={require('../assets/images/plomero1.png')} style={styles.avatar} />
                     <View style={styles.cardTitleArea}>
@@ -156,12 +160,23 @@ export const MyJobsScreen = ({ navigation }) => {
                     </View>
                     <Text style={styles.lastMessage}>{job.lastMessagePreview || 'Sin mensajes aún.'}</Text>
                   </View>
+                  <TouchableOpacity onPress={() => handleOpenChat(job)}>
                   <View style={styles.cardFooter}>
-                    <Text style={styles.cardFooterText}>Tocar para abrir el chat</Text>
+                      <Text style={styles.cardFooterText}>Tocar para abrir el chat</Text>
+                      <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
+                    </View>
+                  </TouchableOpacity>
+                  { 
+                (job.status.toLowerCase() === 'finalizado') &&
+                <TouchableOpacity onPress={() => handleOpenReviewScreen(job)}>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardFooterText}>Tocar para calificar</Text>
                     <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
                   </View>
                 </TouchableOpacity>
-              );
+                }
+              </View>
+            );
             })
           )}
           {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
@@ -195,7 +210,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: colors.white,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '700',
   },
   headerSubtitle: {
