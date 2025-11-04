@@ -37,7 +37,11 @@ export const ChatScreen = ({ navigation, route }) => {
     const conversationSeed = route?.params?.initialMessages ?? [];
     const serviceOrderId = route?.params?.serviceOrderId ?? null;
     const jobStatus = route?.params?.jobStatus ?? null;
-    const { token, user, username } = useAuth();
+    const { token, user, username, roles } = useAuth();
+
+    // Estados para el sistema de calificación bidireccional
+    const [serviceOrderData, setServiceOrderData] = useState(null);
+    const [loadingServiceOrder, setLoadingServiceOrder] = useState(false);
 
     const [messages, setMessages] = useState(() => [...conversationSeed]);
     const [inputText, setInputText] = useState('');
@@ -73,6 +77,37 @@ export const ChatScreen = ({ navigation, route }) => {
 
     const senderId = useMemo(() => user?.id || username || 'usuario', [user?.id, username]);
     const canSendMessages = Boolean(serviceOrderId && token);
+
+    // Determinar si el usuario actual es profesional en este trabajo
+    const isProfessionalInThisJob = useMemo(() => {
+        return Array.isArray(roles) && roles.includes('PROFESSIONAL');
+    }, [roles]);
+
+    // Cargar datos de la orden de servicio
+    useEffect(() => {
+        if (!serviceOrderId || !token) return;
+
+        const loadServiceOrder = async () => {
+            setLoadingServiceOrder(true);
+            try {
+                const response = await fetch(withBaseUrl(`/service-orders/${serviceOrderId}`), {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setServiceOrderData(data);
+                }
+            } catch (error) {
+                console.error('Error loading service order:', error);
+            } finally {
+                setLoadingServiceOrder(false);
+            }
+        };
+
+        loadServiceOrder();
+    }, [serviceOrderId, token]);
 
     useEffect(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -278,10 +313,30 @@ export const ChatScreen = ({ navigation, route }) => {
 
     const handleCompleteJobPress = () => {
         if (jobStatus === 'COMPLETED') {
-            Alert.alert('Trabajo ya completado', 'Este trabajo ya ha sido marcado como completado.');
+            Alert.alert('Trabajo completado', 'Este trabajo ya fue completado por ambas partes.');
             setMenuVisible(false);
             return;
         }
+
+        // Verificar si ya completé mi parte
+        if (isProfessionalInThisJob && serviceOrderData?.completedByProfessional) {
+            Alert.alert(
+                'Ya calificaste',
+                'Ya completaste tu parte y calificaste al cliente. Esperando que el cliente también califique.',
+                [{ text: 'OK', onPress: () => setMenuVisible(false) }]
+            );
+            return;
+        }
+
+        if (!isProfessionalInThisJob && serviceOrderData?.completedByClient) {
+            Alert.alert(
+                'Ya calificaste',
+                'Ya completaste tu parte y calificaste al profesional. Esperando que el profesional también califique.',
+                [{ text: 'OK', onPress: () => setMenuVisible(false) }]
+            );
+            return;
+        }
+
         setMenuVisible(false);
         setCompleteJobModalVisible(true);
     };
@@ -292,7 +347,7 @@ export const ChatScreen = ({ navigation, route }) => {
             setCompleteJobModalVisible(false);
             return;
         }
-        
+
         if (rating === 0) {
             Alert.alert('Calificación requerida', 'Por favor seleccioná una calificación antes de continuar.');
             return;
@@ -314,17 +369,39 @@ export const ChatScreen = ({ navigation, route }) => {
             });
 
             if (!response.ok) {
-                throw new Error('No se pudo completar el trabajo');
+                const errorData = await response.text();
+                throw new Error(errorData || 'No se pudo completar el trabajo');
+            }
+
+            const updatedOrder = await response.json();
+            setServiceOrderData(updatedOrder);
+
+            // Determinar el mensaje según el estado
+            let title = '¡Calificación enviada!';
+            let message = '';
+
+            if (updatedOrder.status === 'COMPLETED') {
+                // Ambos completaron
+                message = '¡Excelente! Ambas partes han calificado. El trabajo está completamente finalizado.';
+            } else {
+                // Solo una parte completó
+                if (isProfessionalInThisJob) {
+                    message = 'Tu calificación ha sido guardada. El trabajo se marcará como completado cuando el cliente también califique.';
+                } else {
+                    message = 'Tu calificación ha sido guardada. El trabajo se marcará como completado cuando el profesional también califique.';
+                }
             }
 
             Alert.alert(
-                'Trabajo completado',
-                '¡Gracias por tu calificación! El trabajo ha sido marcado como finalizado.',
+                title,
+                message,
                 [
                     {
                         text: 'OK',
                         onPress: () => {
                             setCompleteJobModalVisible(false);
+                            setRating(0);
+                            setReviewComment('');
                             navigation.goBack();
                         },
                     },
@@ -332,7 +409,7 @@ export const ChatScreen = ({ navigation, route }) => {
             );
         } catch (error) {
             console.error('Error completing job:', error);
-            Alert.alert('Error', 'No se pudo completar el trabajo. Intentá nuevamente.');
+            Alert.alert('Error', error.message || 'No se pudo completar el trabajo. Intentá nuevamente.');
         } finally {
             setCompletingJob(false);
         }
@@ -683,8 +760,42 @@ export const ChatScreen = ({ navigation, route }) => {
                         <View style={styles.completeModalContainer}>
                             <Text style={styles.completeModalTitle}>Completar Trabajo</Text>
                             <Text style={styles.completeModalSubtitle}>
-                                ¿Cómo fue tu experiencia con {professionalName}?
+                                {isProfessionalInThisJob
+                                    ? '¿Cómo fue tu experiencia con el cliente?'
+                                    : `¿Cómo fue tu experiencia con ${professionalName}?`
+                                }
                             </Text>
+
+                            {/* Info sobre estado de calificación mutua */}
+                            {serviceOrderData && (
+                                <View style={styles.mutualRatingInfo}>
+                                    {isProfessionalInThisJob ? (
+                                        serviceOrderData.completedByClient ? (
+                                            <View style={styles.infoRow}>
+                                                <Ionicons name="checkmark-circle" size={16} color={colors.greenButton} />
+                                                <Text style={styles.infoText}>El cliente ya calificó. Al confirmar, el trabajo se completará.</Text>
+                                            </View>
+                                        ) : (
+                                            <View style={styles.infoRow}>
+                                                <Ionicons name="time" size={16} color="#FCD34D" />
+                                                <Text style={styles.infoText}>El cliente aún no calificó. Al confirmar, quedará pendiente su calificación.</Text>
+                                            </View>
+                                        )
+                                    ) : (
+                                        serviceOrderData.completedByProfessional ? (
+                                            <View style={styles.infoRow}>
+                                                <Ionicons name="checkmark-circle" size={16} color={colors.greenButton} />
+                                                <Text style={styles.infoText}>El profesional ya calificó. Al confirmar, el trabajo se completará.</Text>
+                                            </View>
+                                        ) : (
+                                            <View style={styles.infoRow}>
+                                                <Ionicons name="time" size={16} color="#FCD34D" />
+                                                <Text style={styles.infoText}>El profesional aún no calificó. Al confirmar, quedará pendiente su calificación.</Text>
+                                            </View>
+                                        )
+                                    )}
+                                </View>
+                            )}
 
                             {/* Star Rating */}
                             <View style={styles.ratingContainer}>
@@ -1021,6 +1132,25 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginBottom: 24,
         textAlign: 'center',
+    },
+    mutualRatingInfo: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    infoText: {
+        flex: 1,
+        color: colors.white,
+        fontSize: 13,
+        lineHeight: 18,
     },
     ratingContainer: {
         flexDirection: 'row',

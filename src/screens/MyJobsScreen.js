@@ -16,14 +16,19 @@ const statusStyles = {
   IN_PROGRESS: { label: 'En curso', color: '#facc15', icon: 'construct-outline' },
   COMPLETED: { label: 'Finalizado', color: colors.greenButton, icon: 'checkmark-done-outline' },
   CANCELLED: { label: 'Cancelado', color: colors.error, icon: 'close-circle-outline' },
+  AWAITING_RATING: { label: 'Esperando calificación', color: '#9333ea', icon: 'star-half-outline' },
 };
 
 export const MyJobsScreen = ({ navigation }) => {
-  const { token } = useAuth();
+  const { token, roles, user } = useAuth();
   const [serviceOrders, setServiceOrders] = useState([]);
   const [professionalsMap, setProfessionalsMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const isProfessional = useMemo(() => {
+    return Array.isArray(roles) && roles.includes('PROFESSIONAL');
+  }, [roles]);
 
   const formattedJobs = useMemo(() => {
     return serviceOrders.map((order) => {
@@ -35,6 +40,22 @@ export const MyJobsScreen = ({ navigation }) => {
     });
     // El ordenamiento ya viene del backend (createdAt desc)
   }, [professionalsMap, serviceOrders]);
+
+  // Determinar el estado visual del trabajo según las calificaciones
+  const getJobDisplayStatus = (job) => {
+    // Si el trabajo tiene el status COMPLETED final, mostrarlo como completado
+    if (job.status === 'COMPLETED') {
+      return 'COMPLETED';
+    }
+
+    // Si tiene calificaciones parciales pero no está COMPLETED, mostrar "Esperando calificación"
+    if (job.completedByClient || job.completedByProfessional) {
+      return 'AWAITING_RATING';
+    }
+
+    // En cualquier otro caso, mostrar el status original
+    return job.status;
+  };
 
   const formatSchedule = (job) => {
     // Si hay fecha programada (scheduledAt), usarla
@@ -67,10 +88,33 @@ export const MyJobsScreen = ({ navigation }) => {
     setLoading(true);
     setError('');
     try {
-      const response = await serviceOrdersApi.listMine(token, { page: 0, size: 20 });
+      let response;
+
+      if (isProfessional) {
+        // Si es profesional, necesitamos primero obtener su perfil profesional
+        try {
+          const myProfessionalProfile = await professionalsApi.getByUserId(user.id, token);
+          if (myProfessionalProfile?.id) {
+            // Cargar trabajos donde este profesional fue contratado
+            response = await serviceOrdersApi.listForProfessional(token, myProfessionalProfile.id, { page: 0, size: 20 });
+          } else {
+            throw new Error('No se encontró tu perfil profesional');
+          }
+        } catch (error) {
+          console.error('Error loading professional profile:', error);
+          setError('No se pudo cargar tu perfil profesional');
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Si es cliente, cargar trabajos que él creó
+        response = await serviceOrdersApi.listMine(token, { page: 0, size: 20 });
+      }
+
       const orders = Array.isArray(response?.content) ? response.content : [];
       setServiceOrders(orders);
 
+      // Cargar información de los profesionales
       const professionalIds = Array.from(new Set(orders.map((order) => order.professionalId).filter(Boolean)));
       const entries = await Promise.all(
         professionalIds.map(async (id) => {
@@ -90,7 +134,7 @@ export const MyJobsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, isProfessional, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -121,8 +165,14 @@ export const MyJobsScreen = ({ navigation }) => {
       <StatusBar style="light" />
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Mis trabajos</Text>
-          <Text style={styles.headerSubtitle}>Seguimiento rápido de tus servicios activos</Text>
+          <Text style={styles.headerTitle}>
+            {isProfessional ? 'Mis trabajos asignados' : 'Mis trabajos'}
+          </Text>
+          <Text style={styles.headerSubtitle}>
+            {isProfessional
+              ? 'Servicios donde fuiste contratado'
+              : 'Seguimiento rápido de tus servicios activos'}
+          </Text>
         </View>
 
         <ScrollView
@@ -139,21 +189,38 @@ export const MyJobsScreen = ({ navigation }) => {
             <View style={styles.emptyState}>
               <Ionicons name="briefcase-outline" size={40} color={colors.white} />
               <Text style={styles.emptyTitle}>Todavía no tenés trabajos</Text>
-              <Text style={styles.emptySubtitle}>Contratá un profesional para ver tus solicitudes aquí.</Text>
+              <Text style={styles.emptySubtitle}>
+                {isProfessional
+                  ? 'Cuando te contraten, verás tus trabajos aquí.'
+                  : 'Contratá un profesional para ver tus solicitudes aquí.'}
+              </Text>
             </View>
           ) : (
             formattedJobs.map((job) => {
-              const status = statusStyles[job.status] ?? statusStyles.PENDING;
+              const displayStatus = getJobDisplayStatus(job);
+              const status = statusStyles[displayStatus] ?? statusStyles.PENDING;
               return (
                 <View key={job.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <Image
-                      source={job.professional?.avatarUrl ? { uri: job.professional.avatarUrl } : require('../assets/images/plomero1.png')}
+                      source={
+                        isProfessional
+                          ? require('../assets/images/plomero1.png') // Icono genérico para cliente
+                          : (job.professional?.avatarUrl ? { uri: job.professional.avatarUrl } : require('../assets/images/plomero1.png'))
+                      }
                       style={styles.avatar}
                     />
                     <View style={styles.cardTitleArea}>
-                      <Text style={styles.professionalName}>{job.professional?.displayName || job.professional?.name || 'Profesional'}</Text>
-                      <Text style={styles.professionalProfession}>{job.professional?.profession || 'Servicio'}</Text>
+                      <Text style={styles.professionalName}>
+                        {isProfessional
+                          ? (job.contactName || 'Cliente')
+                          : (job.professional?.displayName || job.professional?.name || 'Profesional')}
+                      </Text>
+                      <Text style={styles.professionalProfession}>
+                        {isProfessional
+                          ? job.address || 'Dirección no especificada'
+                          : (job.professional?.profession || 'Servicio')}
+                      </Text>
                     </View>
                     <View style={[styles.statusPill, { backgroundColor: status.color }]}>
                       <Ionicons name={status.icon} size={14} color={colors.white} style={styles.statusIcon} />
@@ -170,21 +237,52 @@ export const MyJobsScreen = ({ navigation }) => {
                       </View>
                     </View>
                   </View>
+                  {/* Indicador de calificaciones mutuas */}
+                  {(job.completedByClient || job.completedByProfessional) && job.status !== 'COMPLETED' && (
+                    <View style={styles.ratingStatusContainer}>
+                      <View style={styles.ratingStatusRow}>
+                        <View style={styles.ratingStatusItem}>
+                          <Ionicons
+                            name={job.completedByClient ? "checkmark-circle" : "ellipse-outline"}
+                            size={16}
+                            color={job.completedByClient ? colors.greenButton : colors.mutedText}
+                          />
+                          <Text style={styles.ratingStatusText}>
+                            Cliente {job.completedByClient ? 'calificó' : 'pendiente'}
+                          </Text>
+                        </View>
+                        <View style={styles.ratingStatusItem}>
+                          <Ionicons
+                            name={job.completedByProfessional ? "checkmark-circle" : "ellipse-outline"}
+                            size={16}
+                            color={job.completedByProfessional ? colors.greenButton : colors.mutedText}
+                          />
+                          <Text style={styles.ratingStatusText}>
+                            Profesional {job.completedByProfessional ? 'calificó' : 'pendiente'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
                   <TouchableOpacity onPress={() => handleOpenChat(job)}>
                   <View style={styles.cardFooter}>
                       <Text style={styles.cardFooterText}>Tocar para abrir el chat</Text>
                       <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
                     </View>
                   </TouchableOpacity>
-                  { 
-                (job.status.toLowerCase() === 'finalizado') &&
-                <TouchableOpacity onPress={() => handleOpenReviewScreen(job)}>
-                  <View style={styles.cardFooter}>
-                    <Text style={styles.cardFooterText}>Tocar para calificar</Text>
-                    <Ionicons name="arrow-forward-circle" size={24} color={colors.white} />
-                  </View>
-                </TouchableOpacity>
-                }
+
+                  {/* Botón para calificar si aún no lo hice */}
+                  {displayStatus === 'AWAITING_RATING' && (
+                    (isProfessional && !job.completedByProfessional) || (!isProfessional && !job.completedByClient)
+                  ) && (
+                    <TouchableOpacity onPress={() => handleOpenChat(job)}>
+                      <View style={[styles.cardFooter, styles.cardFooterHighlight]}>
+                        <Text style={styles.cardFooterTextHighlight}>¡Calificá para completar!</Text>
+                        <Ionicons name="star" size={24} color="#FFD700" />
+                      </View>
+                    </TouchableOpacity>
+                  )}
               </View>
             );
             })
@@ -314,6 +412,30 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 12,
   },
+  ratingStatusContainer: {
+    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(147, 51, 234, 0.3)',
+  },
+  ratingStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 12,
+  },
+  ratingStatusItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ratingStatusText: {
+    color: colors.white,
+    fontSize: 12,
+    opacity: 0.9,
+  },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -325,6 +447,20 @@ const styles = StyleSheet.create({
   cardFooterText: {
     color: colors.mutedText,
     fontSize: 13,
+  },
+  cardFooterHighlight: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderTopWidth: 1,
+  },
+  cardFooterTextHighlight: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   loadingContainer: {
     alignItems: 'center',
