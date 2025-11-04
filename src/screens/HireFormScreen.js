@@ -9,6 +9,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -141,13 +142,18 @@ export const HireFormScreen = ({ route, navigation }) => {
                 {/* Card con información del profesional */}
                 <View style={styles.professionalCard}>
                   <View style={styles.professionalInfo}>
-                    <Ionicons name="person-circle" size={48} color={colors.white} />
+                    <Image 
+                      source={require('../assets/images/plomero1.png')} 
+                      style={styles.professionalAvatar}
+                    />
                     <View style={styles.professionalDetails}>
                       <Text style={styles.professionalName}>{professional.displayName || professional.name || 'Profesional'}</Text>
                       <Text style={styles.professionalProfession}>{professional.profession}</Text>
                       <View style={styles.ratingRow}>
                         <Ionicons name="star" size={14} color="#FFD700" />
-                        <Text style={styles.ratingText}>{professional.rating} · {professional.experience} años exp.</Text>
+                        <Text style={styles.ratingText}>
+                          {professional.rating != null ? professional.rating.toFixed(2) : 'N/D'} · {professional.experienceYears ?? 0} años exp.
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -355,6 +361,11 @@ const styles = StyleSheet.create({
   professionalInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  professionalAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   professionalDetails: {
     marginLeft: 16,

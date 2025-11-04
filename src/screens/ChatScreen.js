@@ -42,9 +42,12 @@ export const ChatScreen = ({ navigation, route }) => {
     const [sending, setSending] = useState(false);
     const [menuVisible, setMenuVisible] = useState(false);
     const [completeJobModalVisible, setCompleteJobModalVisible] = useState(false);
+    const [cancelJobModalVisible, setCancelJobModalVisible] = useState(false);
     const [rating, setRating] = useState(0);
     const [reviewComment, setReviewComment] = useState('');
     const [completingJob, setCompletingJob] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
+    const [cancellingJob, setCancellingJob] = useState(false);
     const scrollViewRef = useRef();
 
     const avatarSource = professional.avatar || require('../assets/images/plomero1.png');
@@ -219,6 +222,55 @@ export const ChatScreen = ({ navigation, route }) => {
         }
     };
 
+    const handleCancelJobPress = () => {
+        setMenuVisible(false);
+        setCancelJobModalVisible(true);
+    };
+
+    const handleCancelJob = async () => {
+        if (!cancelReason.trim()) {
+            Alert.alert('Razón requerida', 'Por favor escribí la razón de la cancelación.');
+            return;
+        }
+
+        setCancellingJob(true);
+        try {
+            const response = await fetch(withBaseUrl(`/service-orders/${serviceOrderId}/cancel`), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    reason: cancelReason.trim(),
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('No se pudo cancelar el trabajo');
+            }
+
+            Alert.alert(
+                'Trabajo cancelado',
+                'El trabajo ha sido cancelado exitosamente.',
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            setCancelJobModalVisible(false);
+                            navigation.goBack();
+                        },
+                    },
+                ]
+            );
+        } catch (error) {
+            console.error('Error cancelling job:', error);
+            Alert.alert('Error', 'No se pudo cancelar el trabajo. Intentá nuevamente.');
+        } finally {
+            setCancellingJob(false);
+        }
+    };
+
     const MessageBubble = ({ msg }) => {
         const isUser = msg.sender === 'user';
         return (
@@ -357,6 +409,14 @@ export const ChatScreen = ({ navigation, route }) => {
                             <View style={styles.menuDivider} />
                             <TouchableOpacity
                                 style={styles.menuItem}
+                                onPress={handleCancelJobPress}
+                            >
+                                <Ionicons name="close-circle-outline" size={22} color="#ff9800" />
+                                <Text style={[styles.menuItemText, { color: '#ff9800' }]}>Cancelar trabajo</Text>
+                            </TouchableOpacity>
+                            <View style={styles.menuDivider} />
+                            <TouchableOpacity
+                                style={styles.menuItem}
                                 onPress={handleDeleteConversation}
                             >
                                 <Ionicons name="trash-outline" size={22} color="#ff4757" />
@@ -431,6 +491,60 @@ export const ChatScreen = ({ navigation, route }) => {
                                         <ActivityIndicator color={colors.white} />
                                     ) : (
                                         <Text style={styles.confirmButtonText}>Confirmar</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+
+                {/* Cancel Job Modal */}
+                <Modal
+                    visible={cancelJobModalVisible}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setCancelJobModalVisible(false)}
+                >
+                    <View style={styles.completeModalOverlay}>
+                        <View style={styles.completeModalContainer}>
+                            <Text style={styles.completeModalTitle}>Cancelar Trabajo</Text>
+                            <Text style={styles.completeModalSubtitle}>
+                                ¿Por qué querés cancelar este trabajo?
+                            </Text>
+
+                            {/* Reason Input */}
+                            <TextInput
+                                style={styles.commentInput}
+                                placeholder="Escribí la razón de la cancelación..."
+                                placeholderTextColor={colors.mutedText}
+                                value={cancelReason}
+                                onChangeText={setCancelReason}
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                            />
+
+                            {/* Action Buttons */}
+                            <View style={styles.completeModalActions}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => {
+                                        setCancelJobModalVisible(false);
+                                        setCancelReason('');
+                                    }}
+                                    disabled={cancellingJob}
+                                >
+                                    <Text style={styles.cancelButtonText}>Volver</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.confirmButton, cancellingJob && styles.confirmButtonDisabled, { backgroundColor: '#ff9800' }]}
+                                    onPress={handleCancelJob}
+                                    disabled={cancellingJob}
+                                >
+                                    {cancellingJob ? (
+                                        <ActivityIndicator color={colors.white} />
+                                    ) : (
+                                        <Text style={styles.confirmButtonText}>Cancelar trabajo</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>

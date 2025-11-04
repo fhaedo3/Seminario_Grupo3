@@ -30,7 +30,7 @@ export const LoginForm = ({ onSubmit }) => {
               <Ionicons name="person-outline" size={20} color={colors.white} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Usuario o Email"
+                placeholder="Usuario"
                 placeholderTextColor={colors.mutedText}
                 autoCapitalize="none"
                 autoCorrect={false}

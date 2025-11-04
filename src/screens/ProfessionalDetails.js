@@ -18,8 +18,9 @@ export const ProfessionalDetails = ({ route, navigation }) => {
       try {
         const profile = await professionalsApi.getById(professionalId);
         setProfessional(profile);
-        const reviewsResponse = await reviewsApi.listByProfessional(professionalId, { page: 0, size: 20 });
+        const reviewsResponse = await reviewsApi.listByProfessional(professionalId, { page: 0, size: 100 });
         const reviewsContent = Array.isArray(reviewsResponse?.content) ? reviewsResponse.content : [];
+        console.log('Reviews loaded:', reviewsContent.length);
         setReviews(reviewsContent);
       } catch (error) {
         console.error('Error loading professional details', error);
@@ -167,7 +168,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.white} />
-            <Text style={styles.sectionTitle}>Opiniones de clientes</Text>
+            <Text style={styles.sectionTitle}>Opiniones de clientes ({reviews.length})</Text>
           </View>
           {reviews.length === 0 ? (
             <Text style={styles.sectionText}>Aún no hay opiniones para este profesional.</Text>
@@ -192,7 +193,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
                     </View>
                   </View>
                 </View>
-                <Text style={styles.opinionText}>{opinion.comment}</Text>
+                {opinion.comment && <Text style={styles.opinionText}>{opinion.comment}</Text>}
               </View>
             ))
           )}
@@ -205,24 +206,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
       {/* Botones de acción fijos */}
       <View style={styles.actionBar}>
         <TouchableOpacity
-          style={styles.chatButton}
-          onPress={() =>
-            navigation.navigate('Chat', {
-              professional: {
-                id: professional.id,
-                name: professional.displayName || professional.name,
-                profession: professional.profession,
-                avatar: null,
-              },
-              jobSummary: `Consulta sobre ${professional.profession?.toLowerCase?.() || 'el servicio'}`,
-              serviceOrderId: null,
-            })
-          }
-        >
-          <Ionicons name="chatbubble-ellipses" size={22} color={colors.white} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.hireButton}
+          style={styles.hireButtonFullWidth}
           onPress={() => navigation.navigate('HireForm', { professional })}
         >
           <Ionicons name="checkmark-circle" size={22} color={colors.white} />
@@ -281,7 +265,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 100 : 90,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 180,
   },
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -452,7 +436,7 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   bottomSpace: {
-    height: 20,
+    height: 80,
   },
   actionBar: {
     position: 'absolute',
@@ -473,17 +457,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  chatButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  hireButton: {
+  hireButtonFullWidth: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',

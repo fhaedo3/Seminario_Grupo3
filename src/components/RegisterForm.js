@@ -91,7 +91,7 @@ export const RegisterForm = ({ onSubmit, apiError }) => {
                 <Ionicons name="person-outline" size={20} color={colors.white} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Email o Usuario"
+                  placeholder="Usuario"
                   placeholderTextColor={colors.mutedText}
                   autoCapitalize="none"
                   autoCorrect={false}
