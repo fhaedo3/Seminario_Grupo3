@@ -143,17 +143,32 @@ export const MyJobsScreen = ({ navigation }) => {
   );
 
   const handleOpenChat = (job) => {
-    navigation.navigate('Chat', {
-      professional: {
+    const chatParams = {
+      jobSummary: job.serviceType,
+      serviceOrderId: job.id,
+      jobStatus: job.status,
+    };
+
+    if (isProfessional) {
+      // Si soy profesional, paso los datos del cliente
+      chatParams.clientData = {
+        name: job.contactName || 'Cliente',
+        username: job.userId || 'Cliente',
+        address: job.address || '',
+        avatarUrl: null, // No tenemos avatar del cliente por ahora
+      };
+      chatParams.professional = {}; // Datos vacíos ya que no se usarán
+    } else {
+      // Si soy cliente, paso los datos del profesional
+      chatParams.professional = {
         id: job.professional?.id,
         name: job.professional?.displayName || job.professional?.name,
         profession: job.professional?.profession,
         avatarUrl: job.professional?.avatarUrl,
-      },
-      jobSummary: job.serviceType,
-      serviceOrderId: job.id,
-      jobStatus: job.status,
-    });
+      };
+    }
+
+    navigation.navigate('Chat', chatParams);
   };
 
   const handleOpenReviewScreen = (job) => {

@@ -33,6 +33,7 @@ const fallbackProfessional = {
 
 export const ChatScreen = ({ navigation, route }) => {
     const professional = route?.params?.professional ?? fallbackProfessional;
+    const clientData = route?.params?.clientData ?? null; // Datos del cliente
     const jobSummary = route?.params?.jobSummary ?? 'Detalle del trabajo';
     const conversationSeed = route?.params?.initialMessages ?? [];
     const serviceOrderId = route?.params?.serviceOrderId ?? null;
@@ -69,19 +70,40 @@ export const ChatScreen = ({ navigation, route }) => {
         '⭐', '✨', '🎉', '🎊', '🤔', '😅', '😂', '🤣'
     ];
 
-    const avatarSource = professional.avatarUrl 
-        ? { uri: professional.avatarUrl } 
-        : require('../assets/images/plomero1.png');
-    const professionalName = professional.name || professional.displayName || 'Profesional';
-    const professionalProfession = professional.profession || 'Especialista';
-
-    const senderId = useMemo(() => user?.id || username || 'usuario', [user?.id, username]);
-    const canSendMessages = Boolean(serviceOrderId && token);
-
     // Determinar si el usuario actual es profesional en este trabajo
     const isProfessionalInThisJob = useMemo(() => {
         return Array.isArray(roles) && roles.includes('PROFESSIONAL');
     }, [roles]);
+
+    // Datos del encabezado según el rol
+    const headerData = useMemo(() => {
+        if (isProfessionalInThisJob && clientData) {
+            // Si soy profesional, mostrar datos del cliente
+            return {
+                avatarSource: clientData.avatarUrl
+                    ? { uri: clientData.avatarUrl }
+                    : require('../assets/images/plomero1.png'),
+                name: clientData.name || clientData.username || 'Cliente',
+                subtitle: clientData.address || 'Cliente',
+            };
+        } else {
+            // Si soy cliente, mostrar datos del profesional
+            return {
+                avatarSource: professional.avatarUrl
+                    ? { uri: professional.avatarUrl }
+                    : require('../assets/images/plomero1.png'),
+                name: professional.name || professional.displayName || 'Profesional',
+                subtitle: professional.profession || 'Especialista',
+            };
+        }
+    }, [isProfessionalInThisJob, clientData, professional]);
+
+    const avatarSource = headerData.avatarSource;
+    const professionalName = headerData.name;
+    const professionalProfession = headerData.subtitle;
+
+    const senderId = useMemo(() => user?.id || username || 'usuario', [user?.id, username]);
+    const canSendMessages = Boolean(serviceOrderId && token);
 
     // Cargar datos de la orden de servicio
     useEffect(() => {

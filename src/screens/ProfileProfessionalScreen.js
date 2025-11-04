@@ -371,6 +371,11 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
       const profile = await professionalsApi.getByUserId(user.id, token);
       setProfessionalId(profile.id);
 
+      // Cargar el avatar si existe
+      if (profile.avatarUrl) {
+        setAvatarUrl(profile.avatarUrl);
+      }
+
       const combinedServices = new Set([
         ...(Array.isArray(profile.services) ? profile.services : []),
         ...(Array.isArray(profile.availableJobs) ? profile.availableJobs : []),
