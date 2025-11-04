@@ -249,13 +249,7 @@ export const Homepage = ({ navigation, route }) => {
           </View>
         </ScrollView>
 
-        <BottomNav
-          navigation={navigation}
-          homeRoute="Homepage"
-          searchRoute="SearchProfessionals"
-          jobsRoute="MyJobs"
-          profileRoute="ProfileUser"
-        />
+        <BottomNav navigation={navigation} />
       </View>
     </LinearGradient>
   );

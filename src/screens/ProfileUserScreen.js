@@ -292,7 +292,7 @@ export const ProfileUserScreen = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
 
-        <BottomNav navigation={navigation} profileRoute="ProfileUser" />
+        <BottomNav navigation={navigation} />
       </View>
     </LinearGradient>
   );

@@ -192,7 +192,7 @@ export const MyJobsScreen = ({ navigation }) => {
           {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
         </ScrollView>
 
-        <BottomNav navigation={navigation} jobsRoute="MyJobs" />
+        <BottomNav navigation={navigation} />
       </View>
     </LinearGradient>
   );

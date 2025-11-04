@@ -7,17 +7,8 @@ import { ActivityIndicator, Platform, View } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
-import { Homepage } from './src/screens/Homepage';
-import { SearchProfessionalsScreen } from './src/screens/SearchProfessionalsScreen';
-import { MyJobsScreen } from './src/screens/MyJobsScreen';
-import { ChatScreen } from './src/screens/ChatScreen';
-import { ProfileUserScreen } from './src/screens/ProfileUserScreen';
-import { ProfileProfessionalScreen } from './src/screens/ProfileProfessionalScreen';
-import { ProfessionalDetails } from './src/screens/ProfessionalDetails';
-import { HireFormScreen } from './src/screens/HireFormScreen';
-import { PaymentScreen } from './src/screens/PaymentScreen';
-import { ReviewProfessional } from './src/screens/ReviewProfessional';
-import { ReplyToReview } from './src/screens/ReplyToReview';
+import { UserStack } from './src/navigation/UserStack';
+import { ProfessionalStack } from './src/navigation/ProfessionalStack';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
@@ -30,29 +21,35 @@ const LoadingView = () => (
 );
 
 const RootNavigator = () => {
-  const { isAuthenticated, initializing } = useAuth();
+  const { isAuthenticated, initializing, roles } = useAuth();
   const navigationRef = useRef();
   const [isReady, setIsReady] = useState(false);
+
+  const isProfessional = Array.isArray(roles) && roles.includes('PROFESSIONAL');
 
   useEffect(() => {
     if (!isReady || initializing) return;
 
-    const targetRoute = isAuthenticated ? 'Homepage' : 'Login';
-    
+    let targetRoute = 'Login';
+    if (isAuthenticated) {
+      targetRoute = isProfessional ? 'ProfessionalApp' : 'UserApp';
+    }
+
     if (navigationRef.current) {
       navigationRef.current.reset({
         index: 0,
         routes: [{ name: targetRoute }],
       });
     }
-  }, [isAuthenticated, isReady, initializing]);
+  }, [isAuthenticated, isReady, initializing, isProfessional]);
 
   if (initializing) {
     return <LoadingView />;
   }
 
   const getInitialRouteName = () => {
-    return isAuthenticated ? 'Homepage' : 'Login';
+    if (!isAuthenticated) return 'Login';
+    return isProfessional ? 'ProfessionalApp' : 'UserApp';
   };
 
   return (
@@ -69,19 +66,10 @@ const RootNavigator = () => {
         {/* Pantallas de autenticación */}
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
-        
-        {/* Pantallas principales */}
-        <Stack.Screen name="Homepage" component={Homepage} />
-        <Stack.Screen name="SearchProfessionals" component={SearchProfessionalsScreen} />
-        <Stack.Screen name="MyJobs" component={MyJobsScreen} />
-        <Stack.Screen name="Chat" component={ChatScreen} />
-        <Stack.Screen name="ReviewProfessional" component={ReviewProfessional} />
-        <Stack.Screen name="ReplyToReview" component={ReplyToReview} />
-        <Stack.Screen name="ProfileUser" component={ProfileUserScreen} />
-        <Stack.Screen name="ProfileProfessional" component={ProfileProfessionalScreen} />
-        <Stack.Screen name="ProfessionalDetails" component={ProfessionalDetails} />
-        <Stack.Screen name="HireForm" component={HireFormScreen} />
-        <Stack.Screen name="Payment" component={PaymentScreen} />
+
+        {/* Stacks principales */}
+        <Stack.Screen name="UserApp" component={UserStack} />
+        <Stack.Screen name="ProfessionalApp" component={ProfessionalStack} />
       </Stack.Navigator>
     </NavigationContainer>
   );

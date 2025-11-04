@@ -921,7 +921,7 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
 
-        <BottomNav navigation={navigation} profileRoute="ProfileProfessional" />
+        <BottomNav navigation={navigation} />
       </View>
     </LinearGradient>
   );
