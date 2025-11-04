@@ -101,22 +101,21 @@ export const HireFormScreen = ({ route, navigation }) => {
 
     try {
       const serviceOrder = await serviceOrdersApi.create(token, payload);
-      
-      Alert.alert(
-        '¡Solicitud enviada!',
-        `Tu solicitud ha sido enviada a ${professional.displayName || professional.name || 'el profesional'}. El profesional se pondrá en contacto contigo para coordinar los detalles del servicio y el presupuesto.`,
-        [
-          {
-            text: 'Ver mis trabajos',
-            onPress: () => navigation.navigate('MyJobs'),
+
+      // Navegar a la pantalla de pago con los datos de la contratación
+      navigation.navigate('Payment', {
+        hireSummary: {
+          serviceOrder: serviceOrder,
+          professional: professional,
+          clientData: {
+            serviceType: values.serviceType.join(', '),
+            address: values.address,
+            description: values.description,
+            preferredDate: values.preferredDate,
           },
-          {
-            text: 'Volver al inicio',
-            onPress: () => navigation.navigate('Homepage'),
-            style: 'cancel',
-          },
-        ]
-      );
+          totalAmount: 5000, // Monto por defecto - puede ser dinámico según el servicio
+        },
+      });
     } catch (error) {
       console.error('Error creating service order', error);
       let errorMessage = 'No se pudo crear la solicitud.';

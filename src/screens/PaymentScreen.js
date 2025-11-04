@@ -10,12 +10,14 @@ import {
   KeyboardAvoidingView,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
+import { MercadoPagoLogo } from '../components/MercadoPagoLogo';
 import { useAuth } from '../context/AuthContext';
 import { paymentsApi } from '../api';
 
@@ -74,7 +76,48 @@ export const PaymentScreen = ({ route, navigation }) => {
       return;
     }
 
-    // Validaciones básicas
+    // Manejo especial para MercadoPago
+    if (selectedPaymentMethod === 'mercadopago') {
+      setIsProcessing(true);
+      try {
+        // Primero crear el pago en el backend
+        const payload = {
+          serviceOrderId,
+          amount: Number(hireSummary?.totalAmount) || 0,
+          currency: 'ARS',
+          method: paymentMethodType,
+          professionalId,
+        };
+
+        await paymentsApi.create(token, payload);
+
+        // Simular redirección a MercadoPago (opcional - abrir navegador)
+        // Si el backend devuelve una URL de MercadoPago, redirigir
+        // const url = 'https://www.mercadopago.com.ar/';
+        // const supported = await Linking.canOpenURL(url);
+        // if (supported) {
+        //   await Linking.openURL(url);
+        // }
+
+        // Simular que el pago fue exitoso (hardcodeado)
+        // En producción, esto vendría del webhook de MercadoPago
+        setTimeout(() => {
+          setIsProcessing(false);
+          // Navegar a la pantalla de confirmación
+          navigation.navigate('ServiceRequested', {
+            hireSummary,
+            paymentMethod: 'mercadopago',
+          });
+        }, 1500); // Simular un pequeño delay del proceso
+      } catch (error) {
+        console.error('Payment failed', error);
+        Alert.alert('Error', error?.message ?? 'No se pudo iniciar el proceso de pago con Mercado Pago.');
+        setIsProcessing(false);
+      }
+      return;
+    }
+
+    // Validaciones básicas para tarjeta
     if (selectedPaymentMethod === 'card') {
       if (!cardNumber || !cardName || !expiryDate || !cvv) {
         Alert.alert('Error', 'Por favor completa todos los campos de la tarjeta');
@@ -106,21 +149,11 @@ export const PaymentScreen = ({ route, navigation }) => {
 
       await paymentsApi.create(token, payload);
 
-      Alert.alert(
-        '¡Pago exitoso!',
-        `Tu contratación de ${(hireSummary.professional.displayName || hireSummary.professional.name)} ha sido confirmada. El profesional se pondrá en contacto contigo pronto.`,
-        [
-          {
-            text: 'Ver mis trabajos',
-            onPress: () => navigation.navigate('MyJobs'),
-          },
-          {
-            text: 'Volver al inicio',
-            onPress: () => navigation.navigate('Homepage'),
-            style: 'cancel',
-          },
-        ]
-      );
+      // Navegar a la pantalla de confirmación
+      navigation.navigate('ServiceRequested', {
+        hireSummary,
+        paymentMethod: selectedPaymentMethod,
+      });
     } catch (error) {
       console.error('Payment failed', error);
       Alert.alert('Error', error?.message ?? 'No se pudo procesar el pago.');
@@ -195,7 +228,7 @@ export const PaymentScreen = ({ route, navigation }) => {
           {/* Métodos de pago */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Método de pago</Text>
-            
+
             {paymentMethods.map((method) => (
               <TouchableOpacity
                 key={method.id}
@@ -207,22 +240,30 @@ export const PaymentScreen = ({ route, navigation }) => {
               >
                 <View style={styles.paymentMethodContent}>
                   <View style={styles.paymentMethodLeft}>
-                    <Ionicons 
-                      name={method.icon} 
-                      size={24} 
-                      color={selectedPaymentMethod === method.id ? colors.greenButton : colors.white} 
-                    />
-                    <Text 
-                      style={[
-                        styles.paymentMethodName,
-                        selectedPaymentMethod === method.id && styles.paymentMethodNameSelected,
-                      ]}
-                    >
-                      {method.name}
-                    </Text>
+                    {method.id === 'mercadopago' ? (
+                      <View style={styles.mercadoPagoLogoContainer}>
+                        <MercadoPagoLogo size="medium" />
+                      </View>
+                    ) : (
+                      <>
+                        <Ionicons
+                          name={method.icon}
+                          size={24}
+                          color={selectedPaymentMethod === method.id ? colors.greenButton : colors.white}
+                        />
+                        <Text
+                          style={[
+                            styles.paymentMethodName,
+                            selectedPaymentMethod === method.id && styles.paymentMethodNameSelected,
+                          ]}
+                        >
+                          {method.name}
+                        </Text>
+                      </>
+                    )}
                   </View>
-                  
-                  <View 
+
+                  <View
                     style={[
                       styles.radioCircle,
                       selectedPaymentMethod === method.id && styles.radioCircleSelected,
@@ -316,10 +357,15 @@ export const PaymentScreen = ({ route, navigation }) => {
           {/* Información de Mercado Pago */}
           {selectedPaymentMethod === 'mercadopago' && (
             <View style={styles.infoCard}>
-              <Ionicons name="information-circle" size={24} color={colors.white} />
-              <Text style={styles.infoText}>
-                Serás redirigido a Mercado Pago para completar el pago de forma segura.
-              </Text>
+              <Ionicons name="information-circle" size={24} color="#009EE3" />
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoText}>
+                  Al confirmar, serás redirigido a Mercado Pago para completar el pago de forma segura.
+                </Text>
+                <Text style={styles.infoTextSecondary}>
+                  Podrás pagar con tarjeta de crédito, débito o saldo en cuenta de Mercado Pago.
+                </Text>
+              </View>
             </View>
           )}
 
@@ -486,6 +532,9 @@ const styles = StyleSheet.create({
     gap: 14,
     flex: 1,
   },
+  mercadoPagoLogoContainer: {
+    paddingVertical: 4,
+  },
   paymentMethodName: {
     color: colors.white,
     fontSize: 16,
@@ -557,12 +606,21 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(59, 130, 246, 0.3)',
     marginBottom: 24,
   },
-  infoText: {
+  infoTextContainer: {
     flex: 1,
+  },
+  infoText: {
     color: colors.white,
     fontSize: 14,
     lineHeight: 20,
     opacity: 0.9,
+    marginBottom: 8,
+  },
+  infoTextSecondary: {
+    color: colors.white,
+    fontSize: 13,
+    lineHeight: 18,
+    opacity: 0.7,
   },
   termsBox: {
     flexDirection: 'row',
