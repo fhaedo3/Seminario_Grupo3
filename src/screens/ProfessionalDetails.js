@@ -47,17 +47,13 @@ export const ProfessionalDetails = ({ route, navigation }) => {
     }
   };
 
-  useEffect(() => {
+    useEffect(() => {
     const loadProfessional = async () => {
       try {
         const profile = await professionalsApi.getById(professionalId);
         setProfessional(profile);
-        const reviewsResponse = await reviewsApi.listByProfessional(professionalId, { page: 0, size: 100 });
-        const reviewsContent = Array.isArray(reviewsResponse?.content) ? reviewsResponse.content : [];
-        console.log('Reviews loaded:', reviewsContent.length);
-        setReviews(reviewsContent);
 
-        // Cargar reviews con configuración inicial
+        // Cargar reviews con configuración inicial (ESTA ES AHORA LA ÚNICA LLAMADA)
         await loadReviews(sortBy, order, filterByRating);
 
         // Verificar si el usuario actual es profesional y obtener su perfil
@@ -78,8 +74,9 @@ export const ProfessionalDetails = ({ route, navigation }) => {
       }
     };
 
-    loadProfessional();
-  }, [professionalId, user, roles]);
+      loadProfessional();
+    }, [professionalId, user, roles, sortBy, order, filterByRating]); // <-- Agregué los filtros a la dependencia
+
 
   // Manejar cambios en ordenamiento
   const handleSortChange = (newSortBy, newOrder) => {
@@ -311,27 +308,60 @@ export const ProfessionalDetails = ({ route, navigation }) => {
             </Text>
           ) : (
             reviews.map((opinion) => (
-              <View key={opinion.id} style={styles.opinionCard}>
-                <View style={styles.opinionHeader}>
-                  <View style={styles.opinionAvatar}>
-                    <Ionicons name="person" size={20} color={colors.white} />
-                  </View>
-                  <View style={styles.opinionInfo}>
-                    <Text style={styles.opinionUser}>{opinion.userDisplayName || opinion.userId}</Text>
-                    <View style={styles.starsRow}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Ionicons
-                          key={star}
-                          name={star <= opinion.rating ? "star" : "star-outline"}
-                          size={14}
-                          color="#FFD700"
-                        />
-                      ))}
+                <View key={opinion.id} style={styles.opinionCard}>
+                    <View style={styles.opinionHeader}>
+                        <View style={styles.opinionAvatar}>
+                            <Ionicons name="person" size={20} color={colors.white} />
+                        </View>
+                        <View style={styles.opinionInfo}>
+                            <Text style={styles.opinionUser}>{opinion.userDisplayName || opinion.userId}</Text>
+                            <View style={styles.starsRow}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <Ionicons
+                                        key={star}
+                                        name={star <= opinion.rating ? "star" : "star-outline"}
+                                        size={14}
+                                        color="#FFD700"
+                                    />
+                                ))}
+                            </View>
+                        </View>
                     </View>
-                  </View>
+
+                    {/* --- Lógica de parseo de Tags --- */}
+                    {(() => {
+                        const tagRegex = /^\[Tags: (.*?)\]\s*(.*)$/;
+                        const match = opinion.comment ? opinion.comment.match(tagRegex) : null;
+
+                        let commentText = opinion.comment;
+                        let tags = [];
+
+                        if (match) {
+                            tags = match[1] ? match[1].split(', ') : [];
+                            commentText = match[2] || ''; // El resto es el comentario
+                        }
+
+                        return (
+                            <>
+                                {/* Muestra solo el texto del comentario */}
+                                {commentText ? <Text style={styles.opinionText}>{commentText}</Text> : null}
+
+                                {/* Muestra los tags en el footer */}
+                                {tags.length > 0 && (
+                                    <View style={styles.tagsFooter}>
+                                        {tags.map((tag, index) => (
+                                            <View key={index} style={styles.tagChip}>
+                                                <Text style={styles.tagChipText}>{tag}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </>
+                        );
+                    })()}
+                    {/* --- Fin de la lógica --- */}
+
                 </View>
-                {opinion.comment && <Text style={styles.opinionText}>{opinion.comment}</Text>}
-              </View>
             ))
           )}
         </View>
@@ -716,5 +746,26 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 18,
     fontWeight: '700',
+  },
+  tagsFooter: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255, 255, 255, 0.15)',
+      justifyContent: 'flex-end', // <-- Esto los alinea a la derecha
+  },
+  tagChip: {
+      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+  },
+  tagChipText: {
+      color: colors.white,
+      fontSize: 12,
+      fontWeight: '500',
   },
 });

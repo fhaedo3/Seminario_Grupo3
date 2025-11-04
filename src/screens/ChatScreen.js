@@ -50,7 +50,7 @@ export const ChatScreen = ({ navigation, route }) => {
     const [cancellingJob, setCancellingJob] = useState(false);
     const scrollViewRef = useRef();
 
-    const avatarSource = professional.avatar || require('../assets/images/plomero1.png');
+    const avatarSource = professional.avatarUrl || require('../assets/images/plomero1.png');
     const professionalName = professional.name || professional.displayName || 'Profesional';
     const professionalProfession = professional.profession || 'Especialista';
 

@@ -205,7 +205,10 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
             filteredProfessionals.map((prof) => (
               <View key={prof.id} style={styles.card}>
                 <View style={styles.cardContent}>
-                  <Image source={require('../assets/images/plomero1.png')} style={styles.profileImage} />
+                  <Image
+                    source={prof.avatarUrl ? { uri: prof.avatarUrl } : require('../assets/images/plomero1.png')}
+                    style={styles.profileImage}
+                  />
                   <View style={styles.infoContainer}>
                     <View style={styles.headerRow}>
                       <View style={styles.textContainer}>
@@ -246,7 +249,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
                       <View style={styles.statDivider} />
                       <View style={styles.statItem}>
                         <Ionicons name="people-outline" size={16} color="#FFF" />
-                        <Text style={styles.statValue}>{prof.reviewCount ?? 0}</Text>
+                        <Text style={styles.statValue}>{prof.reviewsCount ?? 0}</Text>
                         <Text style={styles.statLabel}>Opiniones</Text>
                       </View>
                     </View>

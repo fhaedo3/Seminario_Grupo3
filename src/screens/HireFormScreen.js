@@ -142,9 +142,9 @@ export const HireFormScreen = ({ route, navigation }) => {
                 {/* Card con información del profesional */}
                 <View style={styles.professionalCard}>
                   <View style={styles.professionalInfo}>
-                    <Image 
-                      source={require('../assets/images/plomero1.png')} 
-                      style={styles.professionalAvatar}
+                    <Image
+                      source={prof.avatarUrl ? { uri: prof.avatarUrl } : require('../assets/images/plomero1.png')}
+                      style={styles.profileImage}
                     />
                     <View style={styles.professionalDetails}>
                       <Text style={styles.professionalName}>{professional.displayName || professional.name || 'Profesional'}</Text>

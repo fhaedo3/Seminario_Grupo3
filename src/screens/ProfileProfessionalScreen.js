@@ -19,6 +19,10 @@ import { BackButton } from "../components/BackButton";
 import { showSuccessToast } from "../utils/notifications";
 import { useAuth } from "../context/AuthContext";
 import { professionalsApi } from "../api";
+import * as ImagePicker from "expo-image-picker";
+
+const CLOUDINARY_CLOUD_NAME = 'dtjbknm5h';
+const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
 
 const AVAILABLE_JOBS = [
   "Plomería",
@@ -103,6 +107,59 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
   const [saving, setSaving] = useState(false);
   const [professionalId, setProfessionalId] = useState(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  // --- Handle new image ---
+  const handlePickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets || !result.assets[0]) {
+      return;
+    }
+
+    setUploading(true);
+    const asset = result.assets[0];
+
+    // Prepara la imagen para Cloudinary
+    const data = new FormData();
+    data.append('file', {
+      uri: asset.uri,
+      type: asset.mimeType || 'image/jpeg',
+      name: asset.fileName || 'profile.jpg',
+    });
+    data.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    data.append('cloud_name', CLOUDINARY_CLOUD_NAME);
+
+    try {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: data,
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const json = await response.json();
+      if (json.secure_url) {
+        setAvatarUrl(json.secure_url); // <-- Guarda la nueva URL
+        Alert.alert('Éxito', 'Imagen actualizada. No olvides guardar los cambios.');
+      } else {
+        throw new Error(json.error?.message || 'Error al subir la imagen');
+      }
+    } catch (err) {
+      console.error('Error uploading to Cloudinary:', err);
+      Alert.alert('Error', 'No se pudo subir la imagen.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const isProfessionalRole = useMemo(
     () => Array.isArray(roles) && roles.includes("PROFESSIONAL"),
@@ -422,6 +479,7 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
       address: trimmedLocation,
       minRate: minRateValue ?? undefined,
       maxRate: maxRateValue ?? undefined,
+      avatarUrl: avatarUrl,
       contactEmail: trimmedEmail,
       contactPhone: trimmedPhone,
       paymentMethods: selectedPaymentMethods,
@@ -534,20 +592,21 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
           nestedScrollEnabled
         >
           <View style={styles.avatarSection}>
-            <View style={styles.avatarCircle}>
-              <View style={styles.avatarPlaceholder}>
-                <View style={styles.avatarHead} />
-                <View style={styles.avatarBody} />
+            <TouchableOpacity onPress={handlePickImage} disabled={uploading}>
+              <View style={styles.avatarCircle}>
+                {uploading ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  // Tu placeholder actual
+                  <View style={styles.avatarPlaceholder}>
+                    <View style={styles.avatarHead} />
+                    <View style={styles.avatarBody} />
+                  </View>
+                )}
               </View>
-            </View>
-            <View style={styles.nameContainer}>
-              <Text style={styles.userName}>{formData.fullName || "Nombre"}</Text>
-              {isVerified && (
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark" size={16} color={colors.white} />
-                </View>
-              )}
-            </View>
+            </TouchableOpacity>
           </View>
 
           {loading && (
@@ -1131,6 +1190,11 @@ const styles = StyleSheet.create({
   loadingText: {
     color: colors.white,
     opacity: 0.8,
+  },
+  avatarImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
   },
 });
 
