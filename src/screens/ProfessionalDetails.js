@@ -148,7 +148,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
               <Ionicons
                 name={professional.verificationStatus?.faceVerified ? "checkmark-circle" : "alert-circle"}
                 size={28}
-                color={professional.verificationStatus?.faceVerified ? colors.greenButton : colors.error}
+                color={professional.verificationStatus?.faceVerified ? colors.gold : colors.error}
               />
             </View>
           </View>

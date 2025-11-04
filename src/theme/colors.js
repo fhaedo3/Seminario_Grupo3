@@ -19,6 +19,8 @@ export const colors = {
   errorBackground: 'rgba(248, 113, 113, 0.16)',
   errorBorder: 'rgba(248, 113, 113, 0.4)',
   success: '#10b981',
+  gold: '#ffd700',
+  goldDark: '#daa520',
   
   // Campos de entrada
   inputBackground: 'rgba(15, 23, 42, 0.55)',

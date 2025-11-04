@@ -2,16 +2,31 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, ActivityIndicator, Alert, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
 import { professionalsApi } from '../api';
 import { useAuth } from '../context/AuthContext';
 
+// Mapeo de profesiones a iconos
+const professionIcons = {
+  'Plomero': { family: MaterialIcons, name: 'plumbing', size: 14 },
+  'Electricista': { family: MaterialIcons, name: 'electrical-services', size: 14 },
+  'Pintor': { family: FontAwesome5, name: 'paint-brush', size: 12 },
+  'Pintora': { family: FontAwesome5, name: 'paint-brush', size: 12 },
+  'Carpintero': { family: MaterialIcons, name: 'carpenter', size: 14 },
+  'Gasista': { family: Ionicons, name: 'flame', size: 14 },
+};
+
 export const Homepage = ({ navigation, route }) => {
   const { user } = useAuth();
   const [featuredProfessionals, setFeaturedProfessionals] = useState([]);
   const [loadingProfessionals, setLoadingProfessionals] = useState(false);
+
+  // Función para obtener el icono de la profesión
+  const getProfessionIcon = (profession) => {
+    return professionIcons[profession] || null;
+  };
 
   const userName = useMemo(() => {
     if (user?.fullName) {
@@ -87,23 +102,24 @@ export const Homepage = ({ navigation, route }) => {
     <LinearGradient colors={[colors.primaryBlue, colors.secondaryBlue]} style={styles.background}>
       <StatusBar style="light" />
       <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headline}>Encuentra profesionales de confianza</Text>
+          <Text style={styles.subheadline}>
+            Gestiona tus pedidos, segui tus trabajos y mantene todo en un solo lugar.
+          </Text>
+          <TouchableOpacity style={styles.primaryCta} onPress={() => navigation.navigate('SearchProfessionals')}>
+            <Ionicons name="sparkles" size={20} color={colors.white} />
+            <Text style={styles.primaryCtaText}>Buscar especialistas disponibles</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <Text style={styles.greeting}>Hola, {userName}!</Text>
-            <Text style={styles.headline}>Encontra profesionales de confianza en minutos</Text>
-            <Text style={styles.subheadline}>
-              Gestiona tus pedidos, segui tus trabajos y mantene todo en un solo lugar.
-            </Text>
-            <TouchableOpacity style={styles.primaryCta} onPress={() => navigation.navigate('SearchProfessionals')}>
-              <Ionicons name="sparkles" size={20} color={colors.white} />
-              <Text style={styles.primaryCtaText}>Buscar especialistas disponibles</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.white} />
-            </TouchableOpacity>
-          </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Accesos directos</Text>
@@ -140,11 +156,22 @@ export const Homepage = ({ navigation, route }) => {
                       <View style={styles.featuredNameContainer}>
                         <Text style={styles.featuredName}>{prof.displayName || prof.name}</Text>
                         <View style={styles.featuredVerifiedBadge}>
-                          <Ionicons name="checkmark-circle" size={16} color={colors.greenButton} />
+                          <Ionicons name="checkmark-circle" size={16} color={colors.gold} />
                           <Text style={styles.featuredVerifiedText}>Verificado</Text>
                         </View>
                       </View>
                       <View style={styles.featuredProfessionBadge}>
+                        {getProfessionIcon(prof.profession) && (() => {
+                          const iconConfig = getProfessionIcon(prof.profession);
+                          const IconComponent = iconConfig.family;
+                          return (
+                            <IconComponent
+                              name={iconConfig.name}
+                              size={iconConfig.size}
+                              color={colors.white}
+                            />
+                          );
+                        })()}
                         <Text style={styles.featuredProfessionText}>{prof.profession}</Text>
                       </View>
                     </View>
@@ -181,7 +208,7 @@ export const Homepage = ({ navigation, route }) => {
                       
                       <View style={styles.featuredStatItem}>
                         <View style={styles.featuredStatIconContainer}>
-                          <Ionicons name="people-outline" size={16} color="#64B5F6" />
+                          <Ionicons name="people-outline" size={16} color={colors.white} />
                         </View>
                         <View style={styles.featuredStatTextContainer}>
                           <Text style={styles.featuredStatValue}>{prof.reviewsCount ?? 0}</Text>
@@ -236,11 +263,10 @@ export const Homepage = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   background: { flex: 1 },
-  container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 40 : 30, paddingBottom: 80 },
+  container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 50 : 40, paddingBottom: 80 },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 20, flexGrow: 1 },
-  header: { paddingHorizontal: 20, marginBottom: 16 },
-  greeting: { color: colors.white, fontSize: 16, opacity: 0.85, marginBottom: 4 },
+  header: { paddingHorizontal: 24, paddingBottom: 12 },
   headline: { color: colors.white, fontSize: 26, fontWeight: '700', marginBottom: 8 },
   subheadline: { color: colors.white, opacity: 0.8, lineHeight: 20 },
   primaryCta: {
@@ -339,7 +365,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   featuredVerifiedText: {
-    color: colors.greenButton,
+    color: colors.gold,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -350,7 +376,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
+
   featuredProfessionText: {
     color: colors.white,
     fontSize: 12,

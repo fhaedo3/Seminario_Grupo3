@@ -16,12 +16,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '../components/BackButton';
 import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi } from '../api';
 import { withBaseUrl } from '../config/api';
+import { cloudinaryConfig } from '../config/cloudinary';
 
 const fallbackProfessional = {
     name: 'Jonathan Leguizamón',
@@ -34,6 +36,7 @@ export const ChatScreen = ({ navigation, route }) => {
     const jobSummary = route?.params?.jobSummary ?? 'Detalle del trabajo';
     const conversationSeed = route?.params?.initialMessages ?? [];
     const serviceOrderId = route?.params?.serviceOrderId ?? null;
+    const jobStatus = route?.params?.jobStatus ?? null;
     const { token, user, username } = useAuth();
 
     const [messages, setMessages] = useState(() => [...conversationSeed]);
@@ -48,9 +51,23 @@ export const ChatScreen = ({ navigation, route }) => {
     const [completingJob, setCompletingJob] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [cancellingJob, setCancellingJob] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [fullscreenImage, setFullscreenImage] = useState(null);
     const scrollViewRef = useRef();
 
-    const avatarSource = professional.avatarUrl || require('../assets/images/plomero1.png');
+    // Lista básica de emojis comunes
+    const basicEmojis = [
+        '😀', '😃', '😄', '😊', '😍', '🥰', '😘', '🤗',
+        '👍', '👌', '👏', '🙌', '💪', '🤝', '👋', '🙏',
+        '❤️', '💙', '💚', '💛', '🧡', '💜', '💯', '🔥',
+        '⭐', '✨', '🎉', '🎊', '🤔', '😅', '😂', '🤣'
+    ];
+
+    const avatarSource = professional.avatarUrl 
+        ? { uri: professional.avatarUrl } 
+        : require('../assets/images/plomero1.png');
     const professionalName = professional.name || professional.displayName || 'Profesional';
     const professionalProfession = professional.profession || 'Especialista';
 
@@ -77,6 +94,7 @@ export const ChatScreen = ({ navigation, route }) => {
                           text: msg.content,
                           sender: msg.senderType === 'USER' ? 'user' : 'professional',
                           createdAt: msg.createdAt,
+                          attachmentUrl: msg.attachmentUrl,
                       }))
                     : [];
                 setMessages(loadedMessages);
@@ -91,8 +109,8 @@ export const ChatScreen = ({ navigation, route }) => {
             });
     }, [serviceOrderId, token]); // Removida dependencia conversationSeed
 
-    const handleSend = () => {
-        if (inputText.trim() === '') {
+    const handleSend = async () => {
+        if (inputText.trim() === '' && !selectedImage) {
             return;
         }
 
@@ -101,33 +119,120 @@ export const ChatScreen = ({ navigation, route }) => {
             return;
         }
 
-        const payload = {
-            senderType: 'USER',
-            senderId,
-            content: inputText,
-        };
-
         setSending(true);
-        messagesApi
-            .send(token, serviceOrderId, payload)
-            .then((response) => {
-                const newMessage = {
-                    id: response.id,
-                    text: response.content,
-                    sender: response.senderType === 'USER' ? 'user' : 'professional',
-                    createdAt: response.createdAt,
-                };
-                setMessages((prev) => [...prev, newMessage]);
-                setInputText('');
-                Keyboard.dismiss();
-            })
-            .catch((error) => {
-                console.error('Error sending message', error);
-                Alert.alert('No se pudo enviar el mensaje', error?.message ?? 'Intentá nuevamente más tarde.');
-            })
-            .finally(() => {
-                setSending(false);
+        setUploadingImage(true);
+
+        try {
+            let attachmentUrl = null;
+
+            // Si hay imagen seleccionada, subirla primero a Cloudinary
+            if (selectedImage) {
+                try {
+                    attachmentUrl = await uploadImageToCloudinary(selectedImage);
+                } catch (uploadError) {
+                    Alert.alert('Error al subir imagen', 'No se pudo subir la imagen. Intenta nuevamente.');
+                    setSending(false);
+                    setUploadingImage(false);
+                    return;
+                }
+            }
+
+            const payload = {
+                senderType: 'USER',
+                senderId,
+                content: inputText.trim() || '📷 Imagen',
+                attachmentUrl,
+            };
+
+            const response = await messagesApi.send(token, serviceOrderId, payload);
+            
+            const newMessage = {
+                id: response.id,
+                text: response.content,
+                sender: response.senderType === 'USER' ? 'user' : 'professional',
+                createdAt: response.createdAt,
+                attachmentUrl: response.attachmentUrl,
+            };
+            
+            setMessages((prev) => [...prev, newMessage]);
+            setInputText('');
+            setSelectedImage(null);
+            Keyboard.dismiss();
+        } catch (error) {
+            console.error('Error sending message', error);
+            Alert.alert('No se pudo enviar el mensaje', error?.message ?? 'Intentá nuevamente más tarde.');
+        } finally {
+            setSending(false);
+            setUploadingImage(false);
+        }
+    };
+
+    const handleEmojiPress = () => {
+        setShowEmojiPicker(!showEmojiPicker);
+    };
+
+    const handleEmojiSelect = (emoji) => {
+        setInputText(prev => prev + emoji);
+        setShowEmojiPicker(false);
+    };
+
+    const handleSelectImage = async () => {
+        if (!canSendMessages) {
+            Alert.alert('No puedes enviar imágenes todavía', 'Creá una solicitud para activar el chat.');
+            return;
+        }
+
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.7,
             });
+
+            if (!result.canceled) {
+                setSelectedImage(result.assets[0].uri);
+                setShowEmojiPicker(false);
+            }
+        } catch (error) {
+            console.error('Error selecting image:', error);
+            Alert.alert('Error', 'No se pudo seleccionar la imagen');
+        }
+    };
+
+    const uploadImageToCloudinary = async (imageUri) => {
+        const filename = imageUri.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image`;
+
+        const formData = new FormData();
+        formData.append('file', { uri: imageUri, name: filename, type });
+        formData.append('upload_preset', cloudinaryConfig.upload_preset);
+        formData.append('cloud_name', cloudinaryConfig.cloud_name);
+
+        try {
+            const response = await fetch(
+                `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloud_name}/image/upload`,
+                {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            );
+
+            const data = await response.json();
+            if (data.secure_url) {
+                return data.secure_url;
+            } else {
+                throw new Error('No se pudo obtener la URL de la imagen');
+            }
+        } catch (error) {
+            console.error('Error uploading to Cloudinary:', error);
+            throw error;
+        }
     };
 
     const handleViewProfile = () => {
@@ -172,11 +277,22 @@ export const ChatScreen = ({ navigation, route }) => {
     };
 
     const handleCompleteJobPress = () => {
+        if (jobStatus === 'COMPLETED') {
+            Alert.alert('Trabajo ya completado', 'Este trabajo ya ha sido marcado como completado.');
+            setMenuVisible(false);
+            return;
+        }
         setMenuVisible(false);
         setCompleteJobModalVisible(true);
     };
 
     const handleCompleteJob = async () => {
+        if (jobStatus === 'COMPLETED') {
+            Alert.alert('Error', 'Este trabajo ya ha sido completado.');
+            setCompleteJobModalVisible(false);
+            return;
+        }
+        
         if (rating === 0) {
             Alert.alert('Calificación requerida', 'Por favor seleccioná una calificación antes de continuar.');
             return;
@@ -223,11 +339,32 @@ export const ChatScreen = ({ navigation, route }) => {
     };
 
     const handleCancelJobPress = () => {
+        if (jobStatus === 'COMPLETED') {
+            Alert.alert('No se puede cancelar', 'No se puede cancelar un trabajo que ya ha sido completado.');
+            setMenuVisible(false);
+            return;
+        }
+        if (jobStatus === 'CANCELLED') {
+            Alert.alert('Trabajo ya cancelado', 'Este trabajo ya ha sido cancelado.');
+            setMenuVisible(false);
+            return;
+        }
         setMenuVisible(false);
         setCancelJobModalVisible(true);
     };
 
     const handleCancelJob = async () => {
+        if (jobStatus === 'COMPLETED') {
+            Alert.alert('Error', 'No se puede cancelar un trabajo que ya ha sido completado.');
+            setCancelJobModalVisible(false);
+            return;
+        }
+        if (jobStatus === 'CANCELLED') {
+            Alert.alert('Error', 'Este trabajo ya ha sido cancelado.');
+            setCancelJobModalVisible(false);
+            return;
+        }
+        
         if (!cancelReason.trim()) {
             Alert.alert('Razón requerida', 'Por favor escribí la razón de la cancelación.');
             return;
@@ -273,6 +410,8 @@ export const ChatScreen = ({ navigation, route }) => {
 
     const MessageBubble = ({ msg }) => {
         const isUser = msg.sender === 'user';
+        const hasAttachment = msg.attachmentUrl || msg.image;
+        
         return (
             <View style={[styles.messageRow, { justifyContent: isUser ? 'flex-end' : 'flex-start' }]}>            
                 {!isUser && <Image source={avatarSource} style={styles.avatar} />}
@@ -282,7 +421,18 @@ export const ChatScreen = ({ navigation, route }) => {
                         isUser ? styles.userMessage : styles.professionalMessage,
                     ]}
                 >
-                    {msg.image && <Image source={msg.image} style={styles.messageImage} />}
+                    {hasAttachment && (
+                        <TouchableOpacity onPress={() => setFullscreenImage(msg.attachmentUrl || msg.image)}>
+                            <Image 
+                                source={
+                                    typeof (msg.attachmentUrl || msg.image) === 'string' 
+                                        ? { uri: msg.attachmentUrl || msg.image }
+                                        : msg.attachmentUrl || msg.image
+                                } 
+                                style={styles.messageImage} 
+                            />
+                        </TouchableOpacity>
+                    )}
                     {msg.text && <Text style={styles.messageText}>{msg.text}</Text>}
                 </View>
             </View>
@@ -349,13 +499,74 @@ export const ChatScreen = ({ navigation, route }) => {
                     </View>
                 )}
 
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                    <View style={styles.emojiPicker}>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.emojiScrollContent}
+                        >
+                            {basicEmojis.map((emoji, index) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={styles.emojiButton}
+                                    onPress={() => handleEmojiSelect(emoji)}
+                                >
+                                    <Text style={styles.emojiText}>{emoji}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+
+                {/* Image Preview */}
+                {selectedImage && (
+                    <View style={styles.imagePreviewContainer}>
+                        <View style={styles.imagePreviewWrapper}>
+                            <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+                            <TouchableOpacity 
+                                style={styles.removeImageButton}
+                                onPress={() => setSelectedImage(null)}
+                            >
+                                <Ionicons name="close-circle" size={24} color={colors.error} />
+                            </TouchableOpacity>
+                        </View>
+                        {uploadingImage && (
+                            <View style={styles.uploadingOverlay}>
+                                <ActivityIndicator color={colors.white} size="small" />
+                                <Text style={styles.uploadingText}>Subiendo imagen...</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+
                 {/* Input Area */}
                 <View style={styles.inputArea}>
-                    <TouchableOpacity style={styles.iconButton} disabled>
-                        <Ionicons name="add-circle-outline" size={28} color={colors.mutedText} />
+                    <TouchableOpacity 
+                        style={styles.iconButton} 
+                        onPress={handleSelectImage}
+                        disabled={!canSendMessages || uploadingImage}
+                    >
+                        <Ionicons 
+                            name="add-circle-outline" 
+                            size={28} 
+                            color={canSendMessages ? colors.greenButton : colors.mutedText} 
+                        />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton} disabled>
-                        <Ionicons name="happy-outline" size={28} color={colors.mutedText} />
+                    <TouchableOpacity 
+                        style={[
+                            styles.iconButton, 
+                            showEmojiPicker && canSendMessages && styles.emojiButtonActive
+                        ]} 
+                        onPress={handleEmojiPress}
+                        disabled={!canSendMessages}
+                    >
+                        <Ionicons 
+                            name="happy" 
+                            size={28} 
+                            color={showEmojiPicker && canSendMessages ? colors.white : (canSendMessages ? "#FFD700" : colors.mutedText)} 
+                        />
                     </TouchableOpacity>
                     <TextInput
                         style={styles.input}
@@ -378,6 +589,33 @@ export const ChatScreen = ({ navigation, route }) => {
                     </TouchableOpacity>
                 </View>
 
+                {/* Fullscreen Image Modal */}
+                <Modal
+                    visible={fullscreenImage !== null}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setFullscreenImage(null)}
+                >
+                    <View style={styles.fullscreenModalContainer}>
+                        <TouchableOpacity 
+                            style={styles.closeFullscreenButton}
+                            onPress={() => setFullscreenImage(null)}
+                        >
+                            <Ionicons name="close" size={30} color={colors.white} />
+                        </TouchableOpacity>
+                        {fullscreenImage && (
+                            <Image 
+                                source={
+                                    typeof fullscreenImage === 'string' 
+                                        ? { uri: fullscreenImage }
+                                        : fullscreenImage
+                                } 
+                                style={styles.fullscreenImage} 
+                            />
+                        )}
+                    </View>
+                </Modal>
+
                 {/* Menu Modal */}
                 <Modal
                     visible={menuVisible}
@@ -398,22 +636,30 @@ export const ChatScreen = ({ navigation, route }) => {
                                 <Ionicons name="person-outline" size={22} color={colors.white} />
                                 <Text style={styles.menuItemText}>Ver perfil</Text>
                             </TouchableOpacity>
-                            <View style={styles.menuDivider} />
-                            <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={handleCompleteJobPress}
-                            >
-                                <Ionicons name="checkmark-circle-outline" size={22} color="#5cb85c" />
-                                <Text style={[styles.menuItemText, { color: '#5cb85c' }]}>Completar trabajo</Text>
-                            </TouchableOpacity>
-                            <View style={styles.menuDivider} />
-                            <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={handleCancelJobPress}
-                            >
-                                <Ionicons name="close-circle-outline" size={22} color="#ff9800" />
-                                <Text style={[styles.menuItemText, { color: '#ff9800' }]}>Cancelar trabajo</Text>
-                            </TouchableOpacity>
+                            {jobStatus !== 'COMPLETED' && (
+                                <>
+                                    <View style={styles.menuDivider} />
+                                    <TouchableOpacity
+                                        style={styles.menuItem}
+                                        onPress={handleCompleteJobPress}
+                                    >
+                                        <Ionicons name="checkmark-circle-outline" size={22} color="#5cb85c" />
+                                        <Text style={[styles.menuItemText, { color: '#5cb85c' }]}>Completar trabajo</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                            {jobStatus !== 'COMPLETED' && jobStatus !== 'CANCELLED' && (
+                                <>
+                                    <View style={styles.menuDivider} />
+                                    <TouchableOpacity
+                                        style={styles.menuItem}
+                                        onPress={handleCancelJobPress}
+                                    >
+                                        <Ionicons name="close-circle-outline" size={22} color="#ff9800" />
+                                        <Text style={[styles.menuItemText, { color: '#ff9800' }]}>Cancelar trabajo</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
                             <View style={styles.menuDivider} />
                             <TouchableOpacity
                                 style={styles.menuItem}
@@ -685,7 +931,11 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primaryBlue,
     },
     iconButton: {
-        padding: 5,
+        padding: 8,
+    },
+    emojiButtonActive: {
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        borderRadius: 20,
     },
     input: {
         flex: 1,
@@ -824,5 +1074,93 @@ const styles = StyleSheet.create({
         color: colors.white,
         fontSize: 16,
         fontWeight: '600',
+    },
+    emojiPicker: {
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        paddingVertical: 15,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.3)',
+        marginBottom: 5,
+    },
+    emojiScrollContent: {
+        paddingHorizontal: 8,
+        gap: 8,
+    },
+    emojiButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        borderRadius: 20,
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emojiText: {
+        fontSize: 20,
+    },
+    imagePreviewContainer: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    imagePreviewWrapper: {
+        position: 'relative',
+        alignSelf: 'flex-start',
+    },
+    imagePreview: {
+        width: 120,
+        height: 120,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    removeImageButton: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        backgroundColor: colors.white,
+        borderRadius: 12,
+    },
+    uploadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    uploadingText: {
+        color: colors.white,
+        fontSize: 12,
+    },
+    messageImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 12,
+        marginBottom: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    fullscreenModalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.95)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    fullscreenImage: {
+        width: '100%',
+        height: '80%',
+        resizeMode: 'contain',
+    },
+    closeFullscreenButton: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 20,
+        padding: 8,
     },
 });

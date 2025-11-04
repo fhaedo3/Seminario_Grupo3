@@ -894,7 +894,7 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
 
                   {isVerified && (
                     <View style={styles.successMessage}>
-                      <Ionicons name="shield-checkmark" size={32} color={colors.success} />
+                      <Ionicons name="shield-checkmark" size={32} color={colors.gold} />
                       <Text style={styles.successText}>
                         ¡Verificación completa! Nuestro equipo revisará la información a la brevedad.
                       </Text>
