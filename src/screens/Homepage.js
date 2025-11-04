@@ -153,7 +153,7 @@ export const Homepage = ({ navigation, route }) => {
                     <View style={styles.featuredImageContainer}>
                       <Image
                         source={prof.avatarUrl ? { uri: prof.avatarUrl } : require('../assets/images/plomero1.png')}
-                        style={styles.profileImage}
+                        style={styles.featuredProfileImage}
                       />
                       <View style={styles.featuredExperienceBadge}>
                         <Text style={styles.featuredExperienceText}>{prof.experienceYears ?? 0} años</Text>

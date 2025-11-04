@@ -140,7 +140,10 @@ export const ProfessionalDetails = ({ route, navigation }) => {
         {/* Card del perfil */}
         <View style={styles.profileCard}>
           <View style={styles.profileImageContainer}>
-            <Image source={require('../assets/images/plomero1.png')} style={styles.profileImage} />
+            <Image
+              source={professional.avatarUrl ? { uri: professional.avatarUrl } : require('../assets/images/plomero1.png')}
+              style={styles.profileImage}
+            />
             <View style={styles.verifiedBadge}>
               <Ionicons
                 name={professional.verificationStatus?.faceVerified ? "checkmark-circle" : "alert-circle"}

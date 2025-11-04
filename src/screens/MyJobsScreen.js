@@ -136,8 +136,8 @@ export const MyJobsScreen = ({ navigation }) => {
                 <View key={job.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <Image
-                      source={prof.avatarUrl ? { uri: prof.avatarUrl } : require('../assets/images/plomero1.png')}
-                      style={styles.profileImage}
+                      source={job.professional?.avatarUrl ? { uri: job.professional.avatarUrl } : require('../assets/images/plomero1.png')}
+                      style={styles.avatar}
                     />
                     <View style={styles.cardTitleArea}>
                       <Text style={styles.professionalName}>{job.professional?.displayName || job.professional?.name || 'Profesional'}</Text>

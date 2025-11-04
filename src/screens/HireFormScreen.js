@@ -143,17 +143,15 @@ export const HireFormScreen = ({ route, navigation }) => {
                 <View style={styles.professionalCard}>
                   <View style={styles.professionalInfo}>
                     <Image
-                      source={prof.avatarUrl ? { uri: prof.avatarUrl } : require('../assets/images/plomero1.png')}
-                      style={styles.profileImage}
+                      source={professional.avatarUrl ? { uri: professional.avatarUrl } : require('../assets/images/plomero1.png')}
+                      style={styles.professionalImage}
                     />
                     <View style={styles.professionalDetails}>
                       <Text style={styles.professionalName}>{professional.displayName || professional.name || 'Profesional'}</Text>
                       <Text style={styles.professionalProfession}>{professional.profession}</Text>
                       <View style={styles.ratingRow}>
                         <Ionicons name="star" size={14} color="#FFD700" />
-                        <Text style={styles.ratingText}>
-                          {professional.rating != null ? professional.rating.toFixed(2) : 'N/D'} · {professional.experienceYears ?? 0} años exp.
-                        </Text>
+                        <Text style={styles.ratingText}>{professional.rating} · {professional.experience} años exp.</Text>
                       </View>
                     </View>
                   </View>
@@ -362,10 +360,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  professionalAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  professionalImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.white,
   },
   professionalDetails: {
     marginLeft: 16,
