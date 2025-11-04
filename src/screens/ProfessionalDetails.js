@@ -15,7 +15,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myProfessionalProfile, setMyProfessionalProfile] = useState(null);
-  
+
   // Estados para filtros y ordenamiento
   const [sortBy, setSortBy] = useState('CREATED_AT');
   const [order, setOrder] = useState('DESC');
@@ -26,17 +26,17 @@ export const ProfessionalDetails = ({ route, navigation }) => {
   const loadReviews = async (newSortBy, newOrder, newFilterByRating) => {
     setLoadingReviews(true);
     try {
-      const params = { 
-        page: 0, 
+      const params = {
+        page: 0,
         size: 20,
         sortBy: newSortBy,
         order: newOrder
       };
-      
+
       if (newFilterByRating !== null) {
         params.filterByRating = newFilterByRating;
       }
-      
+
       const reviewsResponse = await reviewsApi.listByProfessional(professionalId, params);
       const reviewsContent = Array.isArray(reviewsResponse?.content) ? reviewsResponse.content : [];
       setReviews(reviewsContent);
@@ -52,7 +52,11 @@ export const ProfessionalDetails = ({ route, navigation }) => {
       try {
         const profile = await professionalsApi.getById(professionalId);
         setProfessional(profile);
-        
+        const reviewsResponse = await reviewsApi.listByProfessional(professionalId, { page: 0, size: 100 });
+        const reviewsContent = Array.isArray(reviewsResponse?.content) ? reviewsResponse.content : [];
+        console.log('Reviews loaded:', reviewsContent.length);
+        setReviews(reviewsContent);
+
         // Cargar reviews con configuración inicial
         await loadReviews(sortBy, order, filterByRating);
 
@@ -225,9 +229,9 @@ export const ProfessionalDetails = ({ route, navigation }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.white} />
-            <Text style={styles.sectionTitle}>Opiniones de clientes</Text>
+            <Text style={styles.sectionTitle}>Opiniones de clientes ({reviews.length})</Text>
           </View>
-          
+
           {/* Controles de ordenamiento y filtrado */}
           {reviews.length > 0 && (
             <View style={styles.filtersContainer}>
@@ -301,7 +305,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
 
           {reviews.length === 0 ? (
             <Text style={styles.sectionText}>
-              {filterByRating !== null 
+              {filterByRating !== null
                 ? `No hay opiniones con ${filterByRating} estrellas.`
                 : 'Aún no hay opiniones para este profesional.'}
             </Text>
@@ -326,38 +330,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
                     </View>
                   </View>
                 </View>
-                <Text style={styles.opinionText}>{opinion.comment}</Text>
-                
-                {/* Respuesta del profesional */}
-                {opinion.reply && (
-                  <View style={styles.replyContainer}>
-                    <View style={styles.replyHeader}>
-                      <Ionicons name="arrow-redo" size={16} color={colors.primaryBlue} />
-                      <Text style={styles.replyLabel}>Respuesta del profesional:</Text>
-                    </View>
-                    <Text style={styles.replyText}>{opinion.reply.reply}</Text>
-                    <Text style={styles.replyDate}>
-                      {new Date(opinion.reply.createdAt).toLocaleDateString('es-AR', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Botón para responder (solo para el profesional dueño) */}
-                {myProfessionalProfile && 
-                 myProfessionalProfile.id === professionalId && 
-                 !opinion.reply && (
-                  <TouchableOpacity
-                    style={styles.replyButton}
-                    onPress={() => navigation.navigate('ReplyToReview', { review: opinion })}
-                  >
-                    <Ionicons name="chatbox-outline" size={16} color={colors.primaryBlue} />
-                    <Text style={styles.replyButtonText}>Responder</Text>
-                  </TouchableOpacity>
-                )}
+                {opinion.comment && <Text style={styles.opinionText}>{opinion.comment}</Text>}
               </View>
             ))
           )}
@@ -370,24 +343,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
       {/* Botones de acción fijos */}
       <View style={styles.actionBar}>
         <TouchableOpacity
-          style={styles.chatButton}
-          onPress={() =>
-            navigation.navigate('Chat', {
-              professional: {
-                id: professional.id,
-                name: professional.displayName || professional.name,
-                profession: professional.profession,
-                avatar: null,
-              },
-              jobSummary: `Consulta sobre ${professional.profession?.toLowerCase?.() || 'el servicio'}`,
-              serviceOrderId: null,
-            })
-          }
-        >
-          <Ionicons name="chatbubble-ellipses" size={22} color={colors.white} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.hireButton}
+          style={styles.hireButtonFullWidth}
           onPress={() => navigation.navigate('HireForm', { professional })}
         >
           <Ionicons name="checkmark-circle" size={22} color={colors.white} />
@@ -446,7 +402,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 100 : 90,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 180,
   },
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -720,7 +676,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   bottomSpace: {
-    height: 20,
+    height: 80,
   },
   actionBar: {
     position: 'absolute',
@@ -741,17 +697,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  chatButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  hireButton: {
+  hireButtonFullWidth: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, ActivityIndicator, Alert, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -110,11 +110,15 @@ export const Homepage = ({ navigation, route }) => {
             <View style={styles.quickActionsGrid}>
               {quickActions.map((item) => (
                 <TouchableOpacity key={item.id} style={styles.quickActionCard} onPress={item.action}>
-                  <View style={[styles.quickActionIcon, { backgroundColor: item.color }]}>
-                    <Ionicons name={item.icon} size={20} color={colors.white} />
+                  <View style={styles.quickActionContent}>
+                    <View style={styles.quickActionTextSection}>
+                      <Text style={styles.quickActionLabel}>{item.label}</Text>
+                      <Text style={styles.quickActionDescription}>{item.description}</Text>
+                    </View>
+                    <View style={[styles.quickActionIcon, { backgroundColor: item.color }]}>
+                      <Ionicons name={item.icon} size={24} color={colors.white} />
+                    </View>
                   </View>
-                  <Text style={styles.quickActionLabel}>{item.label}</Text>
-                  <Text style={styles.quickActionDescription}>{item.description}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -131,35 +135,71 @@ export const Homepage = ({ navigation, route }) => {
               ) : (
                 featuredProfessionals.map((prof) => (
                   <View key={prof.id} style={styles.featuredCard}>
-                    <View style={styles.featuredHeader}>
-                      <View style={styles.featuredAvatar}>
-                        <Ionicons name="person" size={24} color={colors.white} />
-                      </View>
-                      <View style={styles.featuredInfo}>
+                    {/* Header con nombre y badge de profesión */}
+                    <View style={styles.featuredCardHeader}>
+                      <View style={styles.featuredNameContainer}>
                         <Text style={styles.featuredName}>{prof.displayName || prof.name}</Text>
-                        <Text style={styles.featuredMeta}>
-                          {prof.profession} · {prof.experienceYears ?? 0} años
-                        </Text>
+                        <View style={styles.featuredVerifiedBadge}>
+                          <Ionicons name="checkmark-circle" size={16} color={colors.greenButton} />
+                          <Text style={styles.featuredVerifiedText}>Verificado</Text>
+                        </View>
                       </View>
-                      <TouchableOpacity
-                        style={styles.featuredButton}
-                        onPress={() => navigation.navigate('Chat', {
-                          professional: {
-                            id: prof.id,
-                            name: prof.displayName || prof.name,
-                            profession: prof.profession,
-                            avatar: null,
-                          },
-                          jobSummary: `Consulta sobre ${prof.profession?.toLowerCase?.() || 'el servicio'}`,
-                          serviceOrderId: null,
-                        })}
-                      >
-                        <Ionicons name="chatbubble-ellipses" size={18} color={colors.white} />
-                      </TouchableOpacity>
+                      <View style={styles.featuredProfessionBadge}>
+                        <Text style={styles.featuredProfessionText}>{prof.profession}</Text>
+                      </View>
                     </View>
+
+                    {/* Imagen del profesional centrada */}
+                    <View style={styles.featuredImageContainer}>
+                      <Image 
+                        source={require('../assets/images/plomero1.png')} 
+                        style={styles.featuredProfileImage}
+                      />
+                      <View style={styles.featuredExperienceBadge}>
+                        <Text style={styles.featuredExperienceText}>{prof.experienceYears ?? 0} años</Text>
+                      </View>
+                    </View>
+                    
+                    {/* Descripción */}
                     <Text style={styles.featuredDescription}>
                       {prof.summary || 'Consultá para conocer más sobre este profesional.'}
                     </Text>
+
+                    {/* Stats Row mejorado */}
+                    <View style={styles.featuredStatsContainer}>
+                      <View style={styles.featuredStatItem}>
+                        <View style={styles.featuredStatIconContainer}>
+                          <Ionicons name="star" size={16} color="#FFD700" />
+                        </View>
+                        <View style={styles.featuredStatTextContainer}>
+                          <Text style={styles.featuredStatValue}>
+                            {prof.rating != null ? prof.rating.toFixed(2) : 'N/D'}
+                          </Text>
+                          <Text style={styles.featuredStatLabel}>Rating</Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.featuredStatItem}>
+                        <View style={styles.featuredStatIconContainer}>
+                          <Ionicons name="people-outline" size={16} color="#64B5F6" />
+                        </View>
+                        <View style={styles.featuredStatTextContainer}>
+                          <Text style={styles.featuredStatValue}>{prof.reviewsCount ?? 0}</Text>
+                          <Text style={styles.featuredStatLabel}>Opiniones</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* View Profile Button */}
+                    <TouchableOpacity
+                      style={styles.viewProfileButton}
+                      onPress={() => navigation.navigate('ProfessionalDetails', {
+                        professionalId: prof.id,
+                      })}
+                    >
+                      <Ionicons name="person-circle-outline" size={18} color={colors.white} />
+                      <Text style={styles.viewProfileButtonText}>Ver perfil</Text>
+                    </TouchableOpacity>
                   </View>
                 ))
               )}
@@ -196,91 +236,221 @@ export const Homepage = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   background: { flex: 1 },
-  container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 50 : 40, paddingBottom: 80 },
+  container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 40 : 30, paddingBottom: 80 },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 220, flexGrow: 1 },
-  header: { paddingHorizontal: 24, marginBottom: 24 },
-  greeting: { color: colors.white, fontSize: 16, opacity: 0.85, marginBottom: 6 },
-  headline: { color: colors.white, fontSize: 28, fontWeight: '700', marginBottom: 10 },
+  scrollContent: { paddingBottom: 20, flexGrow: 1 },
+  header: { paddingHorizontal: 20, marginBottom: 16 },
+  greeting: { color: colors.white, fontSize: 16, opacity: 0.85, marginBottom: 4 },
+  headline: { color: colors.white, fontSize: 26, fontWeight: '700', marginBottom: 8 },
   subheadline: { color: colors.white, opacity: 0.8, lineHeight: 20 },
   primaryCta: {
-    marginTop: 20,
+    marginTop: 16,
     backgroundColor: colors.greenButton,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
   primaryCtaText: { color: colors.white, fontSize: 16, fontWeight: '600', flex: 1 },
-  section: { marginBottom: 28, paddingHorizontal: 24 },
-  sectionTitle: { color: colors.white, fontSize: 20, fontWeight: '600', marginBottom: 16 },
+  section: { marginBottom: 20, paddingHorizontal: 20 },
+  sectionTitle: { color: colors.white, fontSize: 18, fontWeight: '600', marginBottom: 12 },
   quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   quickActionCard: {
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 18,
+    borderRadius: 16,
     padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  quickActionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quickActionTextSection: {
+    flex: 1,
+    paddingRight: 12,
   },
   quickActionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  quickActionLabel: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  quickActionDescription: { color: colors.white, opacity: 0.75, marginTop: 6, lineHeight: 18 },
-  featuredList: { gap: 16 },
+  quickActionLabel: { 
+    color: colors.white, 
+    fontSize: 16, 
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  quickActionDescription: { 
+    color: colors.white, 
+    opacity: 0.8, 
+    lineHeight: 20,
+    fontSize: 14,
+  },
+  featuredList: { gap: 12 },
   featuredCard: {
     backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 16,
+    padding: 16,
   },
   loadingContainer: {
-    paddingVertical: 24,
+    paddingVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 10,
   },
   loadingText: {
     color: colors.white,
     opacity: 0.8,
   },
-  featuredHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  featuredAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+  // Nuevos estilos para las tarjetas rediseñadas
+  featuredCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
-  featuredInfo: { flex: 1 },
-  featuredName: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  featuredMeta: { color: colors.white, opacity: 0.7, marginTop: 4 },
-  featuredButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  featuredNameContainer: {
+    flex: 1,
+  },
+  featuredName: { 
+    color: colors.white, 
+    fontSize: 18, 
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  featuredVerifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  featuredVerifiedText: {
+    color: colors.greenButton,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  featuredProfessionBadge: {
+    backgroundColor: colors.primaryBlue,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  featuredProfessionText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  featuredImageContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+    position: 'relative',
+  },
+  featuredProfileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: colors.white,
+  },
+  featuredExperienceBadge: {
+    position: 'absolute',
+    bottom: -8,
     backgroundColor: colors.greenButton,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  featuredExperienceText: {
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  featuredDescription: { 
+    color: colors.white, 
+    opacity: 0.9, 
+    lineHeight: 20, 
+    marginBottom: 16,
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  featuredStatsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  featuredStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  featuredStatIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  featuredDescription: { color: colors.white, opacity: 0.85, lineHeight: 18 },
-  tipsList: { gap: 12 },
+  featuredStatTextContainer: {
+    alignItems: 'flex-start',
+  },
+  featuredStatValue: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  featuredStatLabel: {
+    color: colors.white,
+    opacity: 0.7,
+    fontSize: 11,
+  },
+  viewProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  viewProfileButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  tipsList: { gap: 10 },
   tipCard: {
     flexDirection: 'row',
     backgroundColor: 'rgba(15,23,42,0.35)',
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
   },
   tipIcon: { marginTop: 2 },
   tipBody: { flex: 1 },
-  tipTitle: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  tipDescription: { color: colors.white, opacity: 0.75, marginTop: 4, lineHeight: 18 },
+  tipTitle: { color: colors.white, fontSize: 15, fontWeight: '600' },
+  tipDescription: { color: colors.white, opacity: 0.75, marginTop: 3, lineHeight: 18 },
 });
