@@ -73,14 +73,7 @@ export const Homepage = ({ navigation, route }) => {
       action: () => navigation.navigate('MyJobs'),
       color: '#38bdf8',
     },
-    {
-      id: 'profile',
-      icon: 'person',
-  label: 'Mi perfil',
-  description: 'Actualiza tu informacion y preferencias',
-      action: () => navigation.navigate('ProfileUser'),
-      color: '#a78bfa',
-    },
+
   ];
 
   const tips = [
@@ -105,9 +98,7 @@ export const Homepage = ({ navigation, route }) => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headline}>Encuentra profesionales de confianza</Text>
-          <Text style={styles.subheadline}>
-            Gestiona tus pedidos, segui tus trabajos y mantene todo en un solo lugar.
-          </Text>
+
           <TouchableOpacity style={styles.primaryCta} onPress={() => navigation.navigate('SearchProfessionals')}>
             <Ionicons name="sparkles" size={20} color={colors.white} />
             <Text style={styles.primaryCtaText}>Buscar especialistas disponibles</Text>
