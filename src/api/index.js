@@ -72,6 +72,12 @@ export const pricedServicesApi = {
   listByProfessional: (professionalId) =>
     request(`/professionals/${professionalId}/services`, { method: 'GET' }),
 
+  getAllTrades: () =>
+    request('/trades', { method: 'GET' }),
+
+  getServicesByTrade: () =>
+    request('/services-by-trade', { method: 'GET' }),
+
   create: (token, payload) =>
     request('/priced-services', { method: 'POST', token, body: payload }),
 

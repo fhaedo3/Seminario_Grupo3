@@ -39,7 +39,9 @@ export const SearchResultsScreen = ({ route, navigation }) => {
         });
 
         const response = await professionalsApi.searchAdvanced(params);
-        setResults(response.content || []);
+        // El endpoint /search/advanced devuelve directamente un array, no un objeto con content
+        const resultsList = Array.isArray(response) ? response : (response.content || []);
+        setResults(resultsList);
       } catch (error) {
         console.error('Error fetching advanced search results:', error);
         Alert.alert('Error', 'No se pudieron obtener los resultados de la búsqueda.');
@@ -50,6 +52,47 @@ export const SearchResultsScreen = ({ route, navigation }) => {
 
     fetchResults();
   }, [filters, sortBy]);
+
+  const getEmptyMessage = () => {
+    const { profession, jobType, location } = filters;
+    
+    const professionText = profession || 'profesionales';
+    
+    if (jobType && location) {
+      return {
+        title: 'No hay profesionales disponibles',
+        subtitle: `No encontramos ${professionText} que realicen "${jobType}" en ${location}. Intenta buscar sin especificar el tipo de trabajo o el barrio.`,
+      };
+    }
+    
+    if (jobType) {
+      return {
+        title: 'Ningún profesional realiza este trabajo',
+        subtitle: `No encontramos ${professionText} que ofrezcan el servicio "${jobType}". Intenta seleccionar otro tipo de trabajo o buscar sin especificar el servicio.`,
+      };
+    }
+    
+    if (location) {
+      return {
+        title: 'No hay profesionales en este barrio',
+        subtitle: `No encontramos ${professionText} que trabajen en ${location}. Intenta buscar en otro barrio o sin especificar la ubicación.`,
+      };
+    }
+    
+    if (profession) {
+      return {
+        title: 'No se encontraron resultados',
+        subtitle: `No encontramos ${professionText} disponibles. Verifica el oficio seleccionado o intenta con otro.`,
+      };
+    }
+    
+    return {
+      title: 'No se encontraron resultados',
+      subtitle: 'Intenta modificar los filtros de búsqueda para obtener más resultados.',
+    };
+  };
+
+  const emptyMessage = getEmptyMessage();
 
   const sortedResults = useMemo(() => {
     // La API ya debería devolver los resultados ordenados, pero como fallback, podemos ordenar en el cliente.
@@ -80,7 +123,7 @@ export const SearchResultsScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {filters.jobType && prof.matchedJobPrice != null && (
+      {filters.jobType && filters.jobType !== 'SIN_ESPECIFICACION' && filters.jobType !== 'OTRO' && prof.matchedJobPrice != null && (
         <View style={styles.priceSection}>
           <Text style={styles.priceLabel}>Precio para "{filters.jobType}":</Text>
           <Text style={styles.priceValue}>${prof.matchedJobPrice.toLocaleString('es-AR')}</Text>
@@ -120,9 +163,16 @@ export const SearchResultsScreen = ({ route, navigation }) => {
           </View>
         ) : sortedResults.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="sad-outline" size={60} color="rgba(255,255,255,0.7)" />
-            <Text style={styles.emptyTitle}>No se encontraron resultados</Text>
-            <Text style={styles.emptySubtitle}>Intenta ajustar los filtros o buscar un oficio diferente.</Text>
+            <Ionicons name="search-outline" size={64} color="rgba(255,255,255,0.6)" />
+            <Text style={styles.emptyTitle}>{emptyMessage.title}</Text>
+            <Text style={styles.emptySubtitle}>{emptyMessage.subtitle}</Text>
+            <TouchableOpacity 
+              style={styles.modifySearchButton} 
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back-outline" size={20} color={colors.white} />
+              <Text style={styles.modifySearchButtonText}>Modificar búsqueda</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <ScrollView
@@ -163,8 +213,23 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
   loadingText: { color: colors.white, fontSize: 16, opacity: 0.8 },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 16 },
-  emptyTitle: { color: colors.white, fontSize: 22, fontWeight: '700' },
-  emptySubtitle: { color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontSize: 16, lineHeight: 22 },
+  emptyTitle: { color: colors.white, fontSize: 22, fontWeight: '700', textAlign: 'center' },
+  emptySubtitle: { color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontSize: 16, lineHeight: 24 },
+  modifySearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.greenButton,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  modifySearchButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 16 },
   card: {
