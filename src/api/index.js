@@ -12,6 +12,7 @@ export const usersApi = {
 
 export const professionalsApi = {
   search: (params = {}) => request('/professionals', { params }),
+  searchAdvanced: (params = {}) => request('/professionals/search/advanced', { params }),
   getById: (id) => request(`/professionals/${id}`, { method: 'GET' }),
   getByUserId: (userId, token) => request(`/professionals/by-user/${userId}`, { method: 'GET', token }),
   create: (token, payload) => request('/professionals', { method: 'POST', token, body: payload }),
@@ -63,4 +64,15 @@ export const messagesApi = {
 
 export const paymentsApi = {
   create: (token, payload) => request('/payments', { method: 'POST', token, body: payload }),
+};
+
+export const pricedServicesApi = {
+  listByProfessional: (professionalId) =>
+    request(`/professionals/${professionalId}/services`, { method: 'GET' }),
+
+  create: (token, payload) =>
+    request('/priced-services', { method: 'POST', token, body: payload }),
+
+  delete: (token, serviceId) =>
+    request(`/priced-services/${serviceId}`, { method: 'DELETE', token }),
 };

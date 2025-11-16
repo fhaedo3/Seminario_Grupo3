@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
-import { professionalsApi, reviewsApi } from '../api';
+import { professionalsApi, reviewsApi, pricedServicesApi} from '../api';
 import { useAuth } from '../context/AuthContext';
 
 export const ProfessionalDetails = ({ route, navigation }) => {
@@ -15,6 +15,8 @@ export const ProfessionalDetails = ({ route, navigation }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myProfessionalProfile, setMyProfessionalProfile] = useState(null);
+  const [pricedServices, setPricedServices] = useState([]);
+  const [loadingPricedServices, setLoadingPricedServices] = useState(false);
 
   // Estados para filtros y ordenamiento
   const [sortBy, setSortBy] = useState('CREATED_AT');
@@ -52,6 +54,17 @@ export const ProfessionalDetails = ({ route, navigation }) => {
       try {
         const profile = await professionalsApi.getById(professionalId);
         setProfessional(profile);
+
+        // 2. Cargar los servicios con precio
+        setLoadingPricedServices(true);
+        try {
+          const services = await pricedServicesApi.listByProfessional(professionalId);
+          setPricedServices(Array.isArray(services) ? services : []);
+        } catch (err) {
+          console.warn('No se pudieron cargar los servicios con precio', err);
+        } finally {
+          setLoadingPricedServices(false);
+        }
 
         // Cargar reviews con configuración inicial (ESTA ES AHORA LA ÚNICA LLAMADA)
         await loadReviews(sortBy, order, filterByRating);
@@ -206,6 +219,33 @@ export const ProfessionalDetails = ({ route, navigation }) => {
           ))}
           {(!professional.services || professional.services.length === 0) && (
             <Text style={styles.sectionText}>Sin servicios detallados.</Text>
+          )}
+        </View>
+
+        {/* 3. Nueva Sección: Precios de Referencia */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="cash-outline" size={24} color={colors.white} />
+            <Text style={styles.sectionTitle}>Precios de Referencia</Text>
+          </View>
+
+          {loadingPricedServices ? (
+            <ActivityIndicator color={colors.white} style={{ marginVertical: 10 }} />
+          ) : pricedServices.length === 0 ? (
+            <Text style={styles.sectionText}>Este profesional no tiene precios de referencia cargados.</Text>
+          ) : (
+            pricedServices.map((service) => (
+              <View key={service.id} style={styles.priceReferenceCard}>
+                <View style={styles.priceInfo}>
+                  <Text style={styles.priceServiceName}>{service.serviceName}</Text>
+                  <Text style={styles.priceServiceDesc}>{service.description || 'Consulta por más detalles'}</Text>
+                </View>
+                <View style={styles.priceTag}>
+                  {/* El cliente SÓLO ve el precio final */}
+                  <Text style={styles.priceTagText}>${service.finalPrice}</Text>
+                </View>
+              </View>
+            ))
           )}
         </View>
 
@@ -770,5 +810,40 @@ const styles = StyleSheet.create({
       color: colors.white,
       fontSize: 12,
       fontWeight: '500',
+  },
+  priceReferenceCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+  },
+  priceInfo: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  priceServiceName: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  priceServiceDesc: {
+    color: colors.white,
+    fontSize: 13,
+    opacity: 0.8,
+  },
+  priceTag: {
+    backgroundColor: colors.greenButton,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  priceTagText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

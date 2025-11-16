@@ -19,6 +19,7 @@ import { BackButton } from "../components/BackButton";
 import { showSuccessToast } from "../utils/notifications";
 import { useAuth } from "../context/AuthContext";
 import { professionalsApi } from "../api";
+import { pricedServicesApi } from "../api"; // 1. Importar
 import * as ImagePicker from "expo-image-picker";
 
 const CLOUDINARY_CLOUD_NAME = 'dtjbknm5h';
@@ -109,6 +110,8 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [pricedServices, setPricedServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(false);
 
   // --- Handle new image ---
   const handlePickImage = async () => {
@@ -370,6 +373,19 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
     try {
       const profile = await professionalsApi.getByUserId(user.id, token);
       setProfessionalId(profile.id);
+
+      // 2. Cargar los servicios con precio
+      if (profile.id) {
+        setLoadingServices(true);
+        try {
+          const services = await pricedServicesApi.listByProfessional(profile.id);
+          setPricedServices(Array.isArray(services) ? services : []);
+        } catch (err) {
+          console.warn('No se pudieron cargar los servicios con precio', err);
+        } finally {
+          setLoadingServices(false);
+        }
+      }
 
       const combinedServices = new Set([
         ...(Array.isArray(profile.services) ? profile.services : []),
@@ -735,6 +751,48 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
                     placeholder="Ej: Verificado, Matriculado"
                     placeholderTextColor="#999"
                   />
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("pricing")}>
+                <Text style={styles.sectionTitle}>Mis Servicios y Precios</Text>
+                <Ionicons
+                  name={expandedSection === "pricing" ? "chevron-down" : "chevron-forward"}
+                  size={24}
+                  color={colors.white}
+                />
+              </TouchableOpacity>
+
+              {expandedSection === "pricing" && (
+                <View style={styles.sectionContent}>
+                  {loadingServices ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <>
+                      {pricedServices.length === 0 && (
+                        <Text style={styles.infoText}>Aún no has agregado servicios con precio de referencia.</Text>
+                      )}
+                      {pricedServices.map((service) => (
+                        <View key={service.id} style={styles.servicePriceCard}>
+                          <View>
+                            <Text style={styles.serviceName}>{service.serviceName}</Text>
+                            <Text style={styles.serviceDesc}>{service.description || 'Sin descripción'}</Text>
+                          </View>
+                          <View style={styles.priceBreakdown}>
+                            <Text style={styles.priceLabel}>Tu Precio:</Text>
+                            <Text style={styles.priceValue}>${service.basePrice}</Text>
+
+                            <Text style={styles.priceLabel}>Comisión:</Text>
+                            <Text style={styles.priceValue}>+ ${service.commissionAmount}</Text>
+
+                            <Text style={styles.priceLabel}>Precio Final:</Text>
+                            <Text style={styles.priceValueFinal}>${service.finalPrice}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  )}
+                  {/* Aquí iría el formulario para agregar un nuevo servicio */}
                 </View>
               )}
 
@@ -1195,6 +1253,45 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+  },
+  servicePriceCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(96, 165, 250, 0.3)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  serviceName: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  serviceDesc: {
+    color: colors.white,
+    fontSize: 13,
+    opacity: 0.8,
+    marginTop: 4,
+  },
+  priceBreakdown: {
+    alignItems: 'flex-end',
+  },
+  priceLabel: {
+    color: colors.white,
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  priceValue: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  priceValueFinal: {
+    color: colors.greenButton,
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 4,
   },
 });
 
