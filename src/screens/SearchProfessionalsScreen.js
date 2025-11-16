@@ -184,6 +184,15 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
           </View>
         </View>
 
+        {/* Botón de Búsqueda Avanzada */}
+        <TouchableOpacity
+          style={styles.advancedSearchButton}
+          onPress={() => navigation.navigate('AdvancedSearch')}
+        >
+          <Ionicons name="options-outline" size={20} color={colors.white} />
+          <Text style={styles.advancedSearchButtonText}>Búsqueda Avanzada por Precio y Barrio</Text>
+        </TouchableOpacity>
+
         {/* Professionals List */}
         <ScrollView
           style={styles.scrollView}
@@ -307,11 +316,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 12,
   },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   title: {
     color: colors.white,
     fontSize: 28,
@@ -324,7 +328,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 24,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   searchBar: {
     flexDirection: "row",
@@ -347,6 +351,24 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     marginLeft: 8,
+  },
+  advancedSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingVertical: 12,
+    marginHorizontal: 24,
+    marginBottom: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  advancedSearchButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

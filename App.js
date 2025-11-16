@@ -18,6 +18,8 @@ import { HireFormScreen } from './src/screens/HireFormScreen';
 import { PaymentScreen } from './src/screens/PaymentScreen';
 import { ReviewProfessional } from './src/screens/ReviewProfessional';
 import { ReplyToReview } from './src/screens/ReplyToReview';
+import { AdvancedSearchScreen } from './src/screens/AdvancedSearchScreen';
+import { SearchResultsScreen } from './src/screens/SearchResultsScreen';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
@@ -73,6 +75,8 @@ const RootNavigator = () => {
         {/* Pantallas principales */}
         <Stack.Screen name="Homepage" component={Homepage} />
         <Stack.Screen name="SearchProfessionals" component={SearchProfessionalsScreen} />
+        <Stack.Screen name="AdvancedSearch" component={AdvancedSearchScreen} />
+        <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
         <Stack.Screen name="MyJobs" component={MyJobsScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="ReviewProfessional" component={ReviewProfessional} />
