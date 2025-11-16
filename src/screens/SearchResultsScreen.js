@@ -22,6 +22,7 @@ export const SearchResultsScreen = ({ route, navigation }) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('rating_desc'); // 'rating_desc' por defecto
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -98,9 +99,39 @@ export const SearchResultsScreen = ({ route, navigation }) => {
     // La API ya debería devolver los resultados ordenados, pero como fallback, podemos ordenar en el cliente.
     if (sortBy === 'rating_desc') {
       return [...results].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortBy === 'rating_asc') {
+      return [...results].sort((a, b) => (a.rating || 0) - (b.rating || 0));
+    } else if (sortBy === 'price_desc') {
+      return [...results].sort((a, b) => (b.matchedJobPrice || 0) - (a.matchedJobPrice || 0));
+    } else if (sortBy === 'price_asc') {
+      return [...results].sort((a, b) => (a.matchedJobPrice || 0) - (b.matchedJobPrice || 0));
     }
     return results;
   }, [results, sortBy]);
+
+  const getSortLabel = () => {
+    switch (sortBy) {
+      case 'rating_desc':
+        return 'Mayor Calificación';
+      case 'rating_asc':
+        return 'Menor Calificación';
+      case 'price_desc':
+        return 'Precio: Mayor';
+      case 'price_asc':
+        return 'Precio: Menor';
+      case 'name_asc':
+        return 'Nombre: A-Z';
+      case 'experience_desc':
+        return 'Más Experiencia';
+      default:
+        return 'Ordenar';
+    }
+  };
+
+  const handleSortChange = (newSortBy) => {
+    setSortBy(newSortBy);
+    setShowSortMenu(false);
+  };
 
   const renderProfessionalCard = (prof) => (
     <TouchableOpacity
@@ -126,7 +157,7 @@ export const SearchResultsScreen = ({ route, navigation }) => {
       {filters.jobType && filters.jobType !== 'SIN_ESPECIFICACION' && filters.jobType !== 'OTRO' && prof.matchedJobPrice != null && (
         <View style={styles.priceSection}>
           <Text style={styles.priceLabel}>Precio para "{filters.jobType}":</Text>
-          <Text style={styles.priceValue}>${prof.matchedJobPrice.toLocaleString('es-AR')}</Text>
+          <Text style={styles.priceValue}>${Math.ceil(Number(prof.matchedJobPrice)).toLocaleString('es-AR')}</Text>
         </View>
       )}
 
@@ -142,7 +173,11 @@ export const SearchResultsScreen = ({ route, navigation }) => {
       style={styles.background}
     >
       <StatusBar style="light" />
-      <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.container}
+        activeOpacity={1}
+        onPress={() => showSortMenu && setShowSortMenu(false)}
+      >
         <View style={styles.header}>
           <BackButton navigation={navigation} />
           <Text style={styles.title}>Resultados de Búsqueda</Text>
@@ -150,10 +185,172 @@ export const SearchResultsScreen = ({ route, navigation }) => {
 
         <View style={styles.controlsHeader}>
           <Text style={styles.resultsCount}>{sortedResults.length} profesionales encontrados</Text>
-          <TouchableOpacity style={styles.sortButton} onPress={() => Alert.alert('Ordenar', 'Funcionalidad de ordenamiento múltiple próximamente.')}>
-            <Ionicons name="filter" size={16} color={colors.white} />
-            <Text style={styles.sortButtonText}>Ordenar por Calificación</Text>
-          </TouchableOpacity>
+          <View>
+            <TouchableOpacity 
+              style={styles.sortButton} 
+              onPress={() => setShowSortMenu(!showSortMenu)}
+            >
+              <Ionicons name="filter" size={16} color={colors.white} />
+              <Text style={styles.sortButtonText}>{getSortLabel()}</Text>
+              <Ionicons 
+                name={showSortMenu ? "chevron-up" : "chevron-down"} 
+                size={16} 
+                color={colors.white} 
+              />
+            </TouchableOpacity>
+            
+            {showSortMenu && (
+              <View style={styles.sortMenu}>
+                <TouchableOpacity 
+                  style={[
+                    styles.sortMenuItem,
+                    sortBy === 'rating_desc' && styles.sortMenuItemActive
+                  ]}
+                  onPress={() => handleSortChange('rating_desc')}
+                >
+                  <Ionicons 
+                    name="star" 
+                    size={18} 
+                    color={sortBy === 'rating_desc' ? '#FFD700' : 'rgba(255,255,255,0.7)'} 
+                  />
+                  <Text style={[
+                    styles.sortMenuText,
+                    sortBy === 'rating_desc' && styles.sortMenuTextActive
+                  ]}>
+                    Mayor calificación
+                  </Text>
+                  {sortBy === 'rating_desc' && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+                
+                <View style={styles.sortMenuDivider} />
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.sortMenuItem,
+                    sortBy === 'rating_asc' && styles.sortMenuItemActive
+                  ]}
+                  onPress={() => handleSortChange('rating_asc')}
+                >
+                  <Ionicons 
+                    name="star-outline" 
+                    size={18} 
+                    color={sortBy === 'rating_asc' ? '#FFD700' : 'rgba(255,255,255,0.7)'} 
+                  />
+                  <Text style={[
+                    styles.sortMenuText,
+                    sortBy === 'rating_asc' && styles.sortMenuTextActive
+                  ]}>
+                    Menor calificación
+                  </Text>
+                  {sortBy === 'rating_asc' && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.sortMenuDivider} />
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.sortMenuItem,
+                    sortBy === 'price_asc' && styles.sortMenuItemActive
+                  ]}
+                  onPress={() => handleSortChange('price_asc')}
+                >
+                  <Ionicons 
+                    name="cash-outline" 
+                    size={18} 
+                    color={sortBy === 'price_asc' ? '#4CAF50' : 'rgba(255,255,255,0.7)'} 
+                  />
+                  <Text style={[
+                    styles.sortMenuText,
+                    sortBy === 'price_asc' && styles.sortMenuTextActive
+                  ]}>
+                    Precio: Más barato
+                  </Text>
+                  {sortBy === 'price_asc' && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+                
+                <View style={styles.sortMenuDivider} />
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.sortMenuItem,
+                    sortBy === 'price_desc' && styles.sortMenuItemActive
+                  ]}
+                  onPress={() => handleSortChange('price_desc')}
+                >
+                  <Ionicons 
+                    name="cash" 
+                    size={18} 
+                    color={sortBy === 'price_desc' ? '#FF9800' : 'rgba(255,255,255,0.7)'} 
+                  />
+                  <Text style={[
+                    styles.sortMenuText,
+                    sortBy === 'price_desc' && styles.sortMenuTextActive
+                  ]}>
+                    Precio: Más caro
+                  </Text>
+                  {sortBy === 'price_desc' && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.sortMenuDivider} />
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.sortMenuItem,
+                    sortBy === 'experience_desc' && styles.sortMenuItemActive
+                  ]}
+                  onPress={() => handleSortChange('experience_desc')}
+                >
+                  <Ionicons 
+                    name="briefcase" 
+                    size={18} 
+                    color={sortBy === 'experience_desc' ? '#2196F3' : 'rgba(255,255,255,0.7)'} 
+                  />
+                  <Text style={[
+                    styles.sortMenuText,
+                    sortBy === 'experience_desc' && styles.sortMenuTextActive
+                  ]}>
+                    Más experiencia
+                  </Text>
+                  {sortBy === 'experience_desc' && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.sortMenuDivider} />
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.sortMenuItem,
+                    sortBy === 'name_asc' && styles.sortMenuItemActive
+                  ]}
+                  onPress={() => handleSortChange('name_asc')}
+                >
+                  <Ionicons 
+                    name="text" 
+                    size={18} 
+                    color={sortBy === 'name_asc' ? '#9C27B0' : 'rgba(255,255,255,0.7)'} 
+                  />
+                  <Text style={[
+                    styles.sortMenuText,
+                    sortBy === 'name_asc' && styles.sortMenuTextActive
+                  ]}>
+                    Nombre: A-Z
+                  </Text>
+                  {sortBy === 'name_asc' && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
 
         {loading ? (
@@ -182,7 +379,7 @@ export const SearchResultsScreen = ({ route, navigation }) => {
             {sortedResults.map(renderProfessionalCard)}
           </ScrollView>
         )}
-      </View>
+      </TouchableOpacity>
     </LinearGradient>
   );
 };
@@ -199,17 +396,69 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
-  resultsCount: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
+  resultsCount: { color: 'rgba(255,255,255,0.8)', fontSize: 14, flex: 1 },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  sortButtonText: { color: colors.white, fontWeight: '600', fontSize: 14 },
+  sortButtonText: { 
+    color: colors.white, 
+    fontWeight: '600', 
+    fontSize: 13,
+    maxWidth: 140,
+  },
+  sortMenu: {
+    position: 'absolute',
+    top: 46,
+    right: 0,
+    backgroundColor: 'rgba(50, 75, 135, 0.98)',
+    borderRadius: 16,
+    minWidth: 220,
+    maxWidth: 260,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
+    zIndex: 1000,
+    paddingVertical: 6,
+  },
+  sortMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  sortMenuItemActive: {
+    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+  },
+  sortMenuText: {
+    flex: 1,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  sortMenuTextActive: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+  sortMenuDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: 14,
+    marginVertical: 2,
+  },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
   loadingText: { color: colors.white, fontSize: 16, opacity: 0.8 },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 16 },

@@ -42,6 +42,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
   const [error, setError] = useState('');
   const [professionOptions, setProfessionOptions] = useState([]);
   const [tagOptions, setTagOptions] = useState([]);
+  const [ratingSortActive, setRatingSortActive] = useState(false);
 
   const toggleFavorite = (id) => {
     const newFavorites = new Set(favorites);
@@ -105,6 +106,9 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
       if (maxDistanceParam) {
         params.maxDistance = maxDistanceParam;
       }
+      if (ratingSortActive) {
+        params.sortBy = 'rating_desc';
+      }
 
       const response = await professionalsApi.search(params);
       const content = Array.isArray(response?.content) ? response.content : [];
@@ -128,7 +132,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [filters.profession, maxDistanceParam, searchTerm]);
+  }, [filters.profession, maxDistanceParam, searchTerm, ratingSortActive]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -139,11 +143,15 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
   }, [fetchProfessionals]);
 
   const filteredProfessionals = useMemo(() => {
-    return results.filter((prof) => {
+    const base = results.filter((prof) => {
       const distanceOk = matchesDistanceFilter(prof.distanceKm ?? 0, filters.distance);
       return distanceOk;
     });
-  }, [results, filters.distance]);
+    if (ratingSortActive) {
+      return [...base].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    return base;
+  }, [results, filters.distance, ratingSortActive]);
 
   return (
     <LinearGradient
@@ -191,6 +199,16 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
         >
           <Ionicons name="options-outline" size={20} color={colors.white} />
           <Text style={styles.advancedSearchButtonText}>Búsqueda Avanzada por Precio y Barrio</Text>
+        </TouchableOpacity>
+
+        {/* Toggle ordenar por calificación */}
+        <TouchableOpacity
+          style={[styles.ratingSortButton, ratingSortActive && styles.ratingSortButtonActive]}
+          onPress={() => setRatingSortActive(prev => !prev)}
+        >
+          <Ionicons name="star" size={18} color={colors.white} />
+          <Text style={styles.ratingSortText}>{ratingSortActive ? 'Ordenado por Calificación' : 'Ordenar por Calificación'}</Text>
+          <Ionicons name={ratingSortActive ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={colors.white} />
         </TouchableOpacity>
 
         {/* Professionals List */}
@@ -354,7 +372,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 12,
     marginHorizontal: 24,
-    marginBottom: 20,
+    marginBottom: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.25)',
@@ -363,6 +381,30 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 15,
     fontWeight: '600',
+  },
+  ratingSortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    marginBottom: 20,
+    gap: 12,
+  },
+  ratingSortButtonActive: {
+    backgroundColor: 'rgba(255, 215, 0, 0.25)',
+    borderColor: 'rgba(255, 215, 0, 0.6)'
+  },
+  ratingSortText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
   },
   scrollView: {
     flex: 1,
