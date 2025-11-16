@@ -7,6 +7,7 @@ import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
 import { professionalsApi } from '../api';
 import { useAuth } from '../context/AuthContext';
+import LogoConfiServ from '../imagenes/logo_original_tight.png';
 
 // Mapeo de profesiones a iconos
 const professionIcons = {
@@ -61,7 +62,6 @@ export const Homepage = ({ navigation, route }) => {
       id: 'search',
       icon: 'search',
       label: 'Buscar profesionales',
-  description: 'Filtra por oficio y encontra tu especialista',
       action: () => navigation.navigate('SearchProfessionals'),
       color: colors.greenButton,
     },
@@ -69,7 +69,6 @@ export const Homepage = ({ navigation, route }) => {
       id: 'jobs',
       icon: 'briefcase',
       label: 'Mis trabajos',
-      description: 'Seguimiento del estado y conversaciones',
       action: () => navigation.navigate('MyJobs'),
       color: '#38bdf8',
     },
@@ -92,11 +91,19 @@ export const Homepage = ({ navigation, route }) => {
   ];
 
   return (
-    <LinearGradient colors={[colors.primaryBlue, colors.secondaryBlue]} style={styles.background}>
+    <LinearGradient
+      colors={['#4C9EFF', '#1B4DB3']}
+      style={styles.background}
+    >
       <StatusBar style="light" />
       <View style={styles.container}>
+
         {/* Header */}
         <View style={styles.header}>
+          <View style={styles.logoWrapper}>
+            <Image source={LogoConfiServ} style={styles.logoHeader} />
+          </View>
+
           <Text style={styles.headline}>Encuentra profesionales de confianza</Text>
 
           <TouchableOpacity style={styles.primaryCta} onPress={() => navigation.navigate('SearchProfessionals')}>
@@ -248,10 +255,15 @@ export const Homepage = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   background: { flex: 1 },
-  container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 50 : 40, paddingBottom: 80 },
+  container: { flex: 1,  paddingBottom: 80 },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 20, flexGrow: 1 },
-  header: { paddingHorizontal: 24, paddingBottom: 12 },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 20 : 10,  // ANTES: no existía
+    paddingHorizontal: 24,
+    paddingBottom: 4,
+    alignItems: 'center',
+  },
   headline: { color: colors.white, fontSize: 26, fontWeight: '700', marginBottom: 8 },
   subheadline: { color: colors.white, opacity: 0.8, lineHeight: 20 },
   primaryCta: {
@@ -271,10 +283,13 @@ const styles = StyleSheet.create({
   quickActionCard: {
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
-    padding: 18,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   quickActionContent: {
     flexDirection: 'row',
@@ -302,7 +317,7 @@ const styles = StyleSheet.create({
   },
   quickActionLabel: { 
     color: colors.white, 
-    fontSize: 16, 
+    fontSize: 20,
     fontWeight: '700',
     marginBottom: 6,
   },
@@ -376,6 +391,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     position: 'relative',
   },
+ logoHeader: {
+    width: 380,
+    height: 180,
+    resizeMode: 'contain',
+    alignSelf: 'center',
+    marginBottom: 10,
+    marginTop: -10,  // opcional para acercarlo más al encabezado
+  },
+ logoWrapper: {
+   paddingVertical: 6,
+    paddingHorizontal: 10,
+     borderRadius: 12,
+     alignSelf: 'center',
+     marginBottom: 10,
+     width: 30,
+     height: 120,
+     alignSelf: 'center',
+ },
   featuredProfileImage: {
     width: 80,
     height: 80,
