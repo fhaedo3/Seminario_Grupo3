@@ -201,29 +201,46 @@ export const PaymentScreen = ({ route, navigation }) => {
               <Ionicons name="receipt-outline" size={24} color={colors.white} />
               <Text style={styles.summaryTitle}>Resumen de contratación</Text>
             </View>
-            
+
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Profesional:</Text>
-              <Text style={styles.summaryValue}>{hireSummary.professional.displayName || hireSummary.professional.name}</Text>
+              <Text style={styles.summaryValue}>
+                {hireSummary.professional.displayName || hireSummary.professional.name}
+              </Text>
             </View>
-            
+
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Servicio:</Text>
               <Text style={styles.summaryValue}>{hireSummary.clientData.serviceType}</Text>
             </View>
-            
+
+            <View style={styles.summaryRow}>
+                          <Text style={styles.summaryLabel}>Comisión :</Text>
+                          <Text style={styles.summaryValue}>12%</Text>
+                        </View>
+
+            <Text style={styles.summaryNote}>
+              Se descontará un 12% del total de la contratación al profesional.
+            </Text>
+
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Fecha:</Text>
               <Text style={styles.summaryValue}>{hireSummary.clientData.preferredDate}</Text>
             </View>
-            
+
             <View style={styles.summaryDivider} />
-            
+
             <View style={styles.summaryRow}>
               <Text style={styles.totalLabel}>Total a pagar:</Text>
               <Text style={styles.totalValue}>ARS ${hireSummary.totalAmount}</Text>
             </View>
+
+            {/* NUEVO - Aclaración de seña */}
+            <Text style={styles.depositText}>
+              Este monto corresponde a una seña a modo de depósito.
+            </Text>
           </View>
+
 
           {/* Métodos de pago */}
           <View style={styles.section}>
@@ -464,6 +481,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
+  summaryNote: {
+    color: colors.white,
+    fontSize: 11,
+    opacity: 0.8,
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
+
+  depositText: {
+    color: colors.white,
+    fontSize: 14,
+    opacity: 0.85,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+
   summaryTitle: {
     color: colors.white,
     fontSize: 18,
