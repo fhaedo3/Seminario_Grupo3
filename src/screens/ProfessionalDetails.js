@@ -193,6 +193,12 @@ export const ProfessionalDetails = ({ route, navigation }) => {
               <Text style={styles.statValue}>{professional.reviewsCount ?? reviews.length}</Text>
               <Text style={styles.statLabel}>Opiniones</Text>
             </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Ionicons name="checkmark-done" size={20} color="#4CAF50" />
+              <Text style={styles.statValue}>{professional.completedWorks ?? 0}</Text>
+              <Text style={styles.statLabel}>Trabajos</Text>
+            </View>
           </View>
         </View>
 

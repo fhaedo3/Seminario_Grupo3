@@ -190,6 +190,11 @@ export const ProfessionalViewProfile = ({ navigation }) => {
               <Text style={styles.statNumber}>{stats.completedJobs}</Text>
               <Text style={styles.statLabel}>Completados</Text>
             </View>
+            <View style={styles.statCard}>
+              <Ionicons name="checkmark-done" size={24} color="#4CAF50" />
+              <Text style={styles.statNumber}>{professionalProfile?.completedWorks ?? 0}</Text>
+              <Text style={styles.statLabel}>Trabajos Totales</Text>
+            </View>
           </View>
 
           {/* Service Orders Section */}
@@ -411,11 +416,13 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     marginBottom: 20,
   },
   statCard: {
     flex: 1,
+    minWidth: "45%",
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 12,
     padding: 16,

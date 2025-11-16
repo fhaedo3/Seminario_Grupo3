@@ -105,6 +105,14 @@ export const SearchResultsScreen = ({ route, navigation }) => {
       return [...results].sort((a, b) => (b.matchedJobPrice || 0) - (a.matchedJobPrice || 0));
     } else if (sortBy === 'price_asc') {
       return [...results].sort((a, b) => (a.matchedJobPrice || 0) - (b.matchedJobPrice || 0));
+    } else if (sortBy === 'name_asc') {
+      return [...results].sort((a, b) => (a.displayName || a.name || '').localeCompare(b.displayName || b.name || ''));
+    } else if (sortBy === 'experience_desc') {
+      return [...results].sort((a, b) => (b.experienceYears || 0) - (a.experienceYears || 0));
+    } else if (sortBy === 'completed_works_desc') {
+      return [...results].sort((a, b) => (b.completedWorks || 0) - (a.completedWorks || 0));
+    } else if (sortBy === 'completed_works_asc') {
+      return [...results].sort((a, b) => (a.completedWorks || 0) - (b.completedWorks || 0));
     }
     return results;
   }, [results, sortBy]);
@@ -123,6 +131,10 @@ export const SearchResultsScreen = ({ route, navigation }) => {
         return 'Nombre: A-Z';
       case 'experience_desc':
         return 'Más Experiencia';
+      case 'completed_works_desc':
+        return 'Más Trabajos';
+      case 'completed_works_asc':
+        return 'Menos Trabajos';
       default:
         return 'Ordenar';
     }
@@ -147,6 +159,14 @@ export const SearchResultsScreen = ({ route, navigation }) => {
         <View style={styles.headerText}>
           <Text style={styles.professionalName}>{prof.displayName || prof.name}</Text>
           <Text style={styles.professionalProfession}>{prof.profession}</Text>
+          {prof.completedWorks != null && prof.completedWorks > 0 && (
+            <View style={styles.completedWorksContainer}>
+              <Ionicons name="checkmark-done" size={14} color="#4CAF50" />
+              <Text style={styles.completedWorksText}>
+                {prof.completedWorks} trabajo{prof.completedWorks !== 1 ? 's' : ''} completado{prof.completedWorks !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
         </View>
         <View style={styles.ratingContainer}>
           <Ionicons name="star" size={16} color="#FFD700" />
@@ -348,6 +368,56 @@ export const SearchResultsScreen = ({ route, navigation }) => {
                     <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
                   )}
                 </TouchableOpacity>
+
+                <View style={styles.sortMenuDivider} />
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.sortMenuItem,
+                    sortBy === 'completed_works_desc' && styles.sortMenuItemActive
+                  ]}
+                  onPress={() => handleSortChange('completed_works_desc')}
+                >
+                  <Ionicons 
+                    name="checkmark-done" 
+                    size={18} 
+                    color={sortBy === 'completed_works_desc' ? '#FF5722' : 'rgba(255,255,255,0.7)'} 
+                  />
+                  <Text style={[
+                    styles.sortMenuText,
+                    sortBy === 'completed_works_desc' && styles.sortMenuTextActive
+                  ]}>
+                    Más trabajos realizados
+                  </Text>
+                  {sortBy === 'completed_works_desc' && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.sortMenuDivider} />
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.sortMenuItem,
+                    sortBy === 'completed_works_asc' && styles.sortMenuItemActive
+                  ]}
+                  onPress={() => handleSortChange('completed_works_asc')}
+                >
+                  <Ionicons 
+                    name="checkmark-done-outline" 
+                    size={18} 
+                    color={sortBy === 'completed_works_asc' ? '#FF5722' : 'rgba(255,255,255,0.7)'} 
+                  />
+                  <Text style={[
+                    styles.sortMenuText,
+                    sortBy === 'completed_works_asc' && styles.sortMenuTextActive
+                  ]}>
+                    Menos trabajos realizados
+                  </Text>
+                  {sortBy === 'completed_works_asc' && (
+                    <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -493,6 +563,17 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   professionalName: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   professionalProfession: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
+  completedWorksContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  completedWorksText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
   ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   ratingText: { color: colors.white, fontWeight: 'bold' },
   summary: { color: 'rgba(255,255,255,0.9)', lineHeight: 20 },
