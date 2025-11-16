@@ -305,8 +305,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -354,7 +353,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 160,
+    paddingBottom: 20,
     flexGrow: 1,
   },
   card: {
@@ -441,6 +440,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   statItem: {
     alignItems: 'center',

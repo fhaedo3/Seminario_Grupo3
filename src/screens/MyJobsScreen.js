@@ -33,19 +33,30 @@ export const MyJobsScreen = ({ navigation }) => {
         professional,
       };
     });
+    // El ordenamiento ya viene del backend (createdAt desc)
   }, [professionalsMap, serviceOrders]);
 
-  const formatSchedule = (dateString) => {
-    if (!dateString) {
-      return 'A coordinar';
+  const formatSchedule = (job) => {
+    // Si hay fecha programada (scheduledAt), usarla
+    if (job.scheduledAt) {
+      const date = new Date(job.scheduledAt);
+      if (!Number.isNaN(date.getTime())) {
+        const dateText = date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+        const timeText = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        return `${dateText} · ${timeText}`;
+      }
     }
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) {
-      return 'A coordinar';
+    
+    // Si no hay fecha programada pero sí fecha preferida, mostrarla
+    if (job.preferredDate) {
+      const date = new Date(job.preferredDate);
+      if (!Number.isNaN(date.getTime())) {
+        const dateText = date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+        return `${dateText} (preferida)`;
+      }
     }
-    const dateText = date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
-    const timeText = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-    return `${dateText} · ${timeText}`;
+    
+    return 'A coordinar';
   };
 
   const loadJobs = useCallback(async () => {
@@ -93,10 +104,11 @@ export const MyJobsScreen = ({ navigation }) => {
         id: job.professional?.id,
         name: job.professional?.displayName || job.professional?.name,
         profession: job.professional?.profession,
-        avatar: null,
+        avatarUrl: job.professional?.avatarUrl,
       },
       jobSummary: job.serviceType,
       serviceOrderId: job.id,
+      jobStatus: job.status,
     });
   };
 
@@ -154,14 +166,9 @@ export const MyJobsScreen = ({ navigation }) => {
                     <View style={styles.metaRow}>
                       <View style={styles.metaItem}>
                         <Ionicons name="calendar-outline" size={16} color={colors.white} />
-                        <Text style={styles.metaText}>{formatSchedule(job.scheduledAt)}</Text>
-                      </View>
-                      <View style={styles.metaItem}>
-                        <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.white} />
-                        <Text style={styles.metaText}>Último mensaje</Text>
+                        <Text style={styles.metaText}>{formatSchedule(job)}</Text>
                       </View>
                     </View>
-                    <Text style={styles.lastMessage}>{job.lastMessagePreview || 'Sin mensajes aún.'}</Text>
                   </View>
                   <TouchableOpacity onPress={() => handleOpenChat(job)}>
                   <View style={styles.cardFooter}>
@@ -297,7 +304,6 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
   },
   metaItem: {
     flexDirection: 'row',
@@ -307,12 +313,6 @@ const styles = StyleSheet.create({
   metaText: {
     color: colors.white,
     fontSize: 12,
-  },
-  lastMessage: {
-    color: colors.white,
-    fontSize: 13,
-    lineHeight: 18,
-    opacity: 0.9,
   },
   cardFooter: {
     flexDirection: 'row',

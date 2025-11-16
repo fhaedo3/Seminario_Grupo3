@@ -29,7 +29,10 @@ const HireSchema = Yup.object().shape({
     .required('La dirección es obligatoria'),
   serviceType: Yup.array()
     .min(1, 'Selecciona al menos un tipo de servicio')
-    .required('Selecciona el tipo de servicio'),
+    .required('Selecciona el tipo de servicio')
+    .test('not-empty', 'Selecciona al menos un tipo de servicio', value => 
+      Array.isArray(value) && value.length > 0
+    ),
   description: Yup.string()
     .min(20, 'Describe el trabajo con más detalle (mínimo 20 caracteres)')
     .required('La descripción del trabajo es obligatoria'),
@@ -66,18 +69,35 @@ export const HireFormScreen = ({ route, navigation }) => {
       return;
     }
 
+    // Validar datos del usuario
+    if (!user?.phone || !user?.email) {
+      Alert.alert(
+        'Información incompleta', 
+        'Para crear una solicitud necesitas tener teléfono y email en tu perfil. Por favor, completa tu información en el perfil de usuario.'
+      );
+      return;
+    }
+
+    // Validar que el profesional esté disponible
+    if (!professional?.id) {
+      Alert.alert('Error', 'No se pudo identificar al profesional. Por favor, intenta nuevamente.');
+      return;
+    }
+
     const payload = {
       professionalId: professional.id,
       contactName: user?.fullName || 'Cliente',
-      contactPhone: user?.phone || '',
-      contactEmail: user?.email || '',
+      contactPhone: user.phone,
+      contactEmail: user.email,
       address: values.address,
-      serviceType: values.serviceType,
+      serviceType: Array.isArray(values.serviceType) ? values.serviceType.join(', ') : values.serviceType,
       description: values.description,
       preferredDate: values.preferredDate,
       budget: 0, // Se definirá luego con el profesional
       paymentPreference: 'card',
     };
+
+    console.log('Payload being sent:', JSON.stringify(payload, null, 2));
 
     try {
       const serviceOrder = await serviceOrdersApi.create(token, payload);
@@ -99,7 +119,15 @@ export const HireFormScreen = ({ route, navigation }) => {
       );
     } catch (error) {
       console.error('Error creating service order', error);
-      Alert.alert('Error', error?.message ?? 'No se pudo crear la solicitud.');
+      let errorMessage = 'No se pudo crear la solicitud.';
+      
+      if (error?.message?.includes('JSON parse error')) {
+        errorMessage = 'Error en el formato de datos. Por favor, verifica la información e intenta nuevamente.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
       helpers.setSubmitting(false);
     }
   };
