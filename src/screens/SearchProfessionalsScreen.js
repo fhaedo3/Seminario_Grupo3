@@ -283,13 +283,7 @@ export const SearchProfessionalsScreen = ({ navigation }) => {
           {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
         </ScrollView>
 
-        <BottomNav
-          navigation={navigation}
-          homeRoute="Homepage"
-          searchRoute="SearchProfessionals"
-          jobsRoute="MyJobs"
-          profileRoute="ProfileUser"
-        />
+        <BottomNav navigation={navigation} />
       </KeyboardAvoidingView>
       <FilterModal
         visible={filterModalVisible}

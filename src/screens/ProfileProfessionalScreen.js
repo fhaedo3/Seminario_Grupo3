@@ -374,6 +374,11 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
       const profile = await professionalsApi.getByUserId(user.id, token);
       setProfessionalId(profile.id);
 
+      // Cargar el avatar si existe
+      if (profile.avatarUrl) {
+        setAvatarUrl(profile.avatarUrl);
+      }
+
       // 2. Cargar los servicios con precio
       if (profile.id) {
         setLoadingServices(true);
@@ -979,7 +984,7 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
 
-        <BottomNav navigation={navigation} profileRoute="ProfileProfessional" />
+        <BottomNav navigation={navigation} />
       </View>
     </LinearGradient>
   );

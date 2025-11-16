@@ -51,6 +51,8 @@ export const serviceOrdersApi = {
   create: (token, payload) => request('/service-orders', { method: 'POST', token, body: payload }),
   getById: (token, id) => request(`/service-orders/${id}`, { method: 'GET', token }),
   listMine: (token, params = {}) => request('/service-orders/me', { method: 'GET', token, params }),
+  listForProfessional: (token, professionalId, params = {}) =>
+    request(`/service-orders/professional/${professionalId}`, { method: 'GET', token, params }),
 };
 
 export const messagesApi = {
