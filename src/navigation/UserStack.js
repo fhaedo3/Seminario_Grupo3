@@ -10,6 +10,8 @@ import { HireFormScreen } from '../screens/HireFormScreen';
 import { PaymentScreen } from '../screens/PaymentScreen';
 import { ServiceRequestedScreen } from '../screens/ServiceRequestedScreen';
 import { ReviewProfessional } from '../screens/ReviewProfessional';
+import { AdvancedSearchScreen } from "../screens/AdvancedSearchScreen";
+import { SearchResultsScreen } from "../screens/SearchResultsScreen";
 
 const Stack = createStackNavigator();
 
@@ -23,6 +25,8 @@ export const UserStack = () => {
     >
       <Stack.Screen name="Homepage" component={Homepage} />
       <Stack.Screen name="SearchProfessionals" component={SearchProfessionalsScreen} />
+      <Stack.Screen name="AdvancedSearch" component={AdvancedSearchScreen} />
+      <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
       <Stack.Screen name="MyJobs" component={MyJobsScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="ProfileUser" component={ProfileUserScreen} />
