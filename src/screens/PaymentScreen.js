@@ -35,6 +35,8 @@ export const PaymentScreen = ({ route, navigation }) => {
 
   const serviceOrderId = hireSummary?.serviceOrder?.id;
   const professionalId = hireSummary?.serviceOrder?.professionalId || hireSummary?.professional?.id;
+  const depositAmount = hireSummary?.depositAmount || 5000;
+  const servicePrice = hireSummary?.servicePrice || 0;
 
   const paymentMethodType = useMemo(() => {
     switch (selectedPaymentMethod) {
@@ -231,14 +233,28 @@ export const PaymentScreen = ({ route, navigation }) => {
             <View style={styles.summaryDivider} />
 
             <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>Total a pagar:</Text>
-              <Text style={styles.totalValue}>ARS ${hireSummary.totalAmount}</Text>
+              <Text style={styles.summaryLabel}>Precio del servicio:</Text>
+              <Text style={styles.summaryValue}>
+                ARS ${servicePrice > 0 ? servicePrice : 'No disponible'}
+              </Text>
             </View>
 
-            {/* NUEVO - Aclaración de seña */}
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Seña a pagar ahora:</Text>
+              <Text style={styles.summaryValue}>ARS ${depositAmount}</Text>
+            </View>
+
             <Text style={styles.depositText}>
               Este monto corresponde a una seña a modo de depósito.
             </Text>
+
+            <View style={styles.summaryDivider} />
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.totalLabel}>Total a pagar ahora:</Text>
+              <Text style={styles.totalValue}>ARS ${depositAmount}</Text>
+            </View>
+
           </View>
 
 
@@ -422,7 +438,8 @@ export const PaymentScreen = ({ route, navigation }) => {
             ) : (
               <>
                 <Ionicons name="card" size={24} color={colors.white} />
-                <Text style={styles.payButtonText}>Confirmar pago de ARS ${hireSummary.totalAmount}</Text>
+                <Text style={styles.payButtonText}>Confirmar pago de ARS ${depositAmount}</Text>
+
               </>
             )}
           </TouchableOpacity>

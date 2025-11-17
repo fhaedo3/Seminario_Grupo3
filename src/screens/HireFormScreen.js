@@ -146,7 +146,8 @@ const priceMap = useMemo(() => {
 
     try {
       const serviceOrder = await serviceOrdersApi.create(token, payload);
-
+      const selectedPrice = priceMap[values.serviceType] || 0;
+      console.log(selectedPrice);
       navigation.navigate('Payment', {
         hireSummary: {
           serviceOrder,
@@ -158,7 +159,7 @@ const priceMap = useMemo(() => {
             preferredDate: values.preferredDate,
           },
           depositAmount: 5000, // seña fija
-          servicePrice: servicePrices[values.serviceType] || 0, // precio real del servicio
+          servicePrice: selectedPrice, // precio real del servicio
           totalAmount: 5000, // solo se paga la seña ahora
         },
       });
