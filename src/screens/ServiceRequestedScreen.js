@@ -109,6 +109,10 @@ export const ServiceRequestedScreen = ({ route, navigation }) => {
             <Text style={styles.summaryLabel}>Dirección:</Text>
             <Text style={styles.summaryValue}>{hireSummary?.clientData?.address}</Text>
           </View>
+          <View style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>Deposito:</Text>
+                      <Text style={styles.summaryValue}>{hireSummary?.totalAmount}</Text>
+          </View>
 
           <View style={styles.summaryDivider} />
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -21,24 +22,26 @@ import { colors } from '../theme/colors';
 import { BackButton } from '../components/BackButton';
 import { useAuth } from '../context/AuthContext';
 import { serviceOrdersApi } from '../api';
+import { pricedServicesApi } from '../api';
 
-// Esquema de validación con Yup
+
+// ✅ VALIDACIÓN
 const HireSchema = Yup.object().shape({
   address: Yup.string()
     .min(10, 'La dirección debe ser más específica')
     .required('La dirección es obligatoria'),
-  serviceType: Yup.array()
-    .min(1, 'Selecciona al menos un tipo de servicio')
-    .required('Selecciona el tipo de servicio')
-    .test('not-empty', 'Selecciona al menos un tipo de servicio', value => 
-      Array.isArray(value) && value.length > 0
-    ),
+
+  serviceType: Yup.string()
+    .required('Selecciona el tipo de servicio'),
+
   description: Yup.string()
     .min(20, 'Describe el trabajo con más detalle (mínimo 20 caracteres)')
     .required('La descripción del trabajo es obligatoria'),
+
   preferredDate: Yup.string()
     .required('La fecha preferida es obligatoria'),
 });
+
 
 export const HireFormScreen = ({ route, navigation }) => {
   const { professional } = route.params;
@@ -46,42 +49,86 @@ export const HireFormScreen = ({ route, navigation }) => {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [date, setDate] = useState(new Date());
+  const [availableJobTypes, setAvailableJobTypes] = useState([]);
+  const [pricedServices, setPricedServices] = useState([]);
 
-  const serviceOptions = useMemo(() => {
-    const services = professional?.services || [];
-    // Asegurarse de que "Otros" no esté duplicado si ya viene en los datos
-    if (services.find(s => s.toLowerCase() === 'otros')) {
-      return services;
+  useEffect(() => {
+    loadTradesAndServices();
+    loadPricedServices();
+  }, []);
+
+  const loadTradesAndServices = async () => {
+    try {
+      const servicesData = await pricedServicesApi.getServicesByTrade();
+
+      const profession = professional.profession;
+
+      let list = servicesData[profession];
+
+      if (!Array.isArray(list)) {
+        // fallback case insensitive
+        const matchedKey = Object.keys(servicesData).find(
+          (k) => k.toLowerCase() === profession.toLowerCase()
+        );
+        list = matchedKey ? servicesData[matchedKey] : [];
+      }
+
+      setAvailableJobTypes(
+        [...new Set(list.map((t) => t.trim()))]
+      );
+    } catch (err) {
+      console.log("Error loading services", err);
+      setAvailableJobTypes([]);
     }
-    return [...services, 'Otros'];
+  };
+  const loadPricedServices = async () => {
+    try {
+      const services = await pricedServicesApi.listByProfessional(professional.id);
+      setPricedServices(Array.isArray(services) ? services : []);
+    } catch (err) {
+      console.log("Error loading priced services", err);
+      setPricedServices([]);
+    }
+  };
+const priceMap = useMemo(() => {
+  const map = {};
+  pricedServices.forEach((s) => {
+    map[s.serviceName] = s.finalPrice; // Cliente ve SOLO el precio final
+  });
+  return map;
+}, [pricedServices]);
+
+
+
+  // Servicios del profesional → para el dropdown
+  const serviceOptions = useMemo(() => {
+    const base = professional?.services || [];
+    return base.includes("Otros") ? base : [...base, "Otros"];
   }, [professional?.services]);
 
-  const initialValues = useMemo(() => ({
+  // Precios si existen
+  const servicePrices = professional?.servicePrices || {}; // ejemplo {"Instalacion": 20000}
+
+  const initialValues = {
     address: '',
-    serviceType: [],
+    serviceType: '',
     description: '',
     preferredDate: '',
-  }), []);
+  };
 
+  // ======================
+  //  SUBMIT
+  // ======================
   const handleSubmit = async (values, helpers) => {
     if (!token) {
-      Alert.alert('Debes iniciar sesión', 'Para contratar un profesional necesitas iniciar sesión.');
-      return;
+      return Alert.alert('Debes iniciar sesión', 'Iniciá sesión para continuar.');
     }
 
-    // Validar datos del usuario
     if (!user?.phone || !user?.email) {
-      Alert.alert(
-        'Información incompleta', 
-        'Para crear una solicitud necesitas tener teléfono y email en tu perfil. Por favor, completa tu información en el perfil de usuario.'
+      return Alert.alert(
+        'Información incompleta',
+        'Debés completar teléfono y email en tu perfil antes de solicitar un servicio.'
       );
-      return;
-    }
-
-    // Validar que el profesional esté disponible
-    if (!professional?.id) {
-      Alert.alert('Error', 'No se pudo identificar al profesional. Por favor, intenta nuevamente.');
-      return;
     }
 
     const payload = {
@@ -90,46 +137,35 @@ export const HireFormScreen = ({ route, navigation }) => {
       contactPhone: user.phone,
       contactEmail: user.email,
       address: values.address,
-      serviceType: Array.isArray(values.serviceType) ? values.serviceType.join(', ') : values.serviceType,
+      serviceType: values.serviceType,
       description: values.description,
       preferredDate: values.preferredDate,
-      budget: 0, // Se definirá luego con el profesional
+      budget: 0,
       paymentPreference: 'card',
     };
-
-    console.log('Payload being sent:', JSON.stringify(payload, null, 2));
 
     try {
       const serviceOrder = await serviceOrdersApi.create(token, payload);
 
-      // Navegar a la pantalla de pago con los datos de la contratación
       navigation.navigate('Payment', {
         hireSummary: {
-          serviceOrder: serviceOrder,
-          professional: professional,
+          serviceOrder,
+          professional,
           clientData: {
-            serviceType: values.serviceType.join(', '),
+            serviceType: values.serviceType,
             address: values.address,
             description: values.description,
             preferredDate: values.preferredDate,
           },
-          totalAmount: 5000, // Monto por defecto - puede ser dinámico según el servicio
+          totalAmount: 5000,
         },
       });
     } catch (error) {
-      console.error('Error creating service order', error);
-      let errorMessage = 'No se pudo crear la solicitud.';
-      
-      if (error?.message?.includes('JSON parse error')) {
-        errorMessage = 'Error en el formato de datos. Por favor, verifica la información e intenta nuevamente.';
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert('Error', errorMessage);
-      helpers.setSubmitting(false);
+      console.error(error);
+      Alert.alert("Error", "No se pudo crear la solicitud.");
     }
   };
+
 
   return (
     <LinearGradient
@@ -140,22 +176,22 @@ export const HireFormScreen = ({ route, navigation }) => {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* Header */}
+        {/* HEADER */}
         <View style={styles.header}>
           <BackButton navigation={navigation} backgroundColor="rgba(0,0,0,0.3)" />
           <View style={styles.headerContent}>
             <Text style={styles.title}>Solicitar Servicio</Text>
             <Text style={styles.subtitle}>
-              Enviá una solicitud de servicio a {professional.displayName || professional.name || 'el profesional'}
+              Enviá una solicitud a {professional.displayName || professional.name}
             </Text>
           </View>
         </View>
 
+
+        {/* FORM */}
         <Formik
           initialValues={initialValues}
-          enableReinitialize
           validationSchema={HireSchema}
           onSubmit={handleSubmit}
         >
@@ -166,7 +202,8 @@ export const HireFormScreen = ({ route, navigation }) => {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* Card con información del profesional */}
+
+                {/* CARD PROFESIONAL */}
                 <View style={styles.professionalCard}>
                   <View style={styles.professionalInfo}>
                     <Image
@@ -174,21 +211,16 @@ export const HireFormScreen = ({ route, navigation }) => {
                       style={styles.professionalImage}
                     />
                     <View style={styles.professionalDetails}>
-                      <Text style={styles.professionalName}>{professional.displayName || professional.name || 'Profesional'}</Text>
+                      <Text style={styles.professionalName}>{professional.displayName}</Text>
                       <Text style={styles.professionalProfession}>{professional.profession}</Text>
-                      <View style={styles.ratingRow}>
-                        <Ionicons name="star" size={14} color="#FFD700" />
-                        <Text style={styles.ratingText}>{professional.rating} · {professional.experience} años exp.</Text>
-                      </View>
                     </View>
                   </View>
                 </View>
 
-                {/* Formulario */}
+                {/* FORMULARIO */}
                 <View style={styles.formSection}>
-                  <Text style={styles.sectionTitle}>Detalles del servicio</Text>
 
-                  {/* Dirección */}
+                  {/* DIRECCIÓN */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Dirección del trabajo *</Text>
                     <View style={[styles.inputContainer, touched.address && errors.address && styles.inputError]}>
@@ -202,53 +234,58 @@ export const HireFormScreen = ({ route, navigation }) => {
                         onBlur={handleBlur('address')}
                       />
                     </View>
-                    {touched.address && errors.address && (
-                      <Text style={styles.errorText}>{errors.address}</Text>
-                    )}
+                    {touched.address && errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
                   </View>
 
-                  {/* Tipo de servicio */}
+                  {/* TIPO DE SERVICIO - PICKER */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Tipo de servicio *</Text>
-                    <View style={styles.servicesGrid}>
-                      {serviceOptions.map((service, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={[
-                            styles.serviceChip,
-                            values.serviceType.includes(service) && styles.serviceChipSelected,
-                          ]}
-                          onPress={() => {
-                            const currentServices = values.serviceType;
-                            const newServices = currentServices.includes(service)
-                              ? currentServices.filter(s => s !== service)
-                              : [...currentServices, service];
-                            setFieldValue('serviceType', newServices);
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.serviceChipText,
-                              values.serviceType.includes(service) && styles.serviceChipTextSelected,
-                            ]}
-                          >
-                            {service}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+
+                    <View style={styles.pickerContainer}>
+                      <Ionicons name="hammer-outline" size={20} color={colors.white} style={styles.inputIcon} />
+
+                      <Picker
+                        selectedValue={values.serviceType}
+                        onValueChange={(itemValue) => setFieldValue('serviceType', itemValue)}
+                        style={styles.picker}
+                        dropdownIconColor={colors.white}
+                      >
+                        <Picker.Item label="Seleccioná un servicio" value="" />
+                        {availableJobTypes.map((service, idx) => (
+                          <Picker.Item key={idx} label={service} value={service} />
+                        ))}
+                      </Picker>
                     </View>
-                    {touched.serviceType && errors.serviceType && (
-                      <Text style={styles.errorText}>{errors.serviceType}</Text>
-                    )}
+
+                    {touched.serviceType && errors.serviceType && <Text style={styles.errorText}>{errors.serviceType}</Text>}
                   </View>
 
-                  {/* Descripción del trabajo */}
+                  {/* PRECIO REFERENCIA */}
+                  {values.serviceType && (
+                    priceMap[values.serviceType] ? (
+                      <Text style={styles.priceReference}>
+                        💵 Precio referencia: ${priceMap[values.serviceType]}
+                      </Text>
+                    ) : (
+                      <Text style={[styles.priceReference, { color: '#ffcccc' }]}>
+                        ⚠️ No se encuentra precio para este tipo de servicio
+                      </Text>
+                    )
+                  )}
+
+                  {/* DESCRIPCIÓN */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Descripción del trabajo *</Text>
-                    <View style={[styles.inputContainer, styles.textAreaContainer, touched.description && errors.description && styles.inputError]}>
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        styles.textAreaContainer,
+                        touched.description && errors.description && styles.inputError,
+                      ]}
+                    >
                       <TextInput
                         style={[styles.input, styles.textArea]}
-                        placeholder="Describe en detalle el trabajo que necesitas..."
+                        placeholder="Contanos qué necesitás..."
                         placeholderTextColor="rgba(255,255,255,0.5)"
                         value={values.description}
                         onChangeText={handleChange('description')}
@@ -263,9 +300,10 @@ export const HireFormScreen = ({ route, navigation }) => {
                     )}
                   </View>
 
-                  {/* Fecha preferida */}
+                  {/* FECHA */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Fecha preferida *</Text>
+
                     <TouchableOpacity
                       style={[
                         styles.inputContainer,
@@ -289,12 +327,14 @@ export const HireFormScreen = ({ route, navigation }) => {
                           },
                         ]}
                       >
-                        {values.preferredDate || 'Ej: 25/10/2025'}
+                        {values.preferredDate || 'Seleccioná una fecha'}
                       </Text>
                     </TouchableOpacity>
+
                     {touched.preferredDate && errors.preferredDate && (
                       <Text style={styles.errorText}>{errors.preferredDate}</Text>
                     )}
+
                     {showDatePicker && (
                       <DateTimePicker
                         value={date}
@@ -304,12 +344,12 @@ export const HireFormScreen = ({ route, navigation }) => {
                         onChange={(event, selectedDate) => {
                           setShowDatePicker(false);
                           if (selectedDate) {
-                            const formattedDate = selectedDate.toLocaleDateString('es-AR', {
+                            const formatted = selectedDate.toLocaleDateString('es-AR', {
                               day: '2-digit',
                               month: '2-digit',
                               year: 'numeric',
                             });
-                            setFieldValue('preferredDate', formattedDate);
+                            setFieldValue('preferredDate', formatted);
                             setDate(selectedDate);
                           }
                         }}
@@ -318,17 +358,17 @@ export const HireFormScreen = ({ route, navigation }) => {
                   </View>
                 </View>
 
-                {/* Nota informativa */}
+                {/* INFO */}
                 <View style={styles.infoBox}>
                   <Ionicons name="information-circle" size={24} color={colors.white} />
                   <Text style={styles.infoText}>
-                    El profesional recibirá tu solicitud y se pondrá en contacto contigo para coordinar
-                    disponibilidad, presupuesto y detalles del servicio.
+                    El profesional recibirá tu solicitud y te contactará para coordinar detalles,
+                    disponibilidad y presupuesto estimado.
                   </Text>
                 </View>
               </ScrollView>
 
-              {/* Botón de contratar */}
+              {/* FOOTER BUTTON */}
               <View style={styles.footer}>
                 <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
                   <Ionicons name="checkmark-circle" size={24} color={colors.white} />
@@ -342,6 +382,10 @@ export const HireFormScreen = ({ route, navigation }) => {
     </LinearGradient>
   );
 };
+
+// ======================
+//     ESTILOS
+// ======================
 
 const styles = StyleSheet.create({
   background: {
@@ -410,16 +454,6 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     marginBottom: 6,
   },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  ratingText: {
-    color: colors.white,
-    fontSize: 13,
-    opacity: 0.85,
-  },
   formSection: {
     marginBottom: 28,
   },
@@ -474,31 +508,27 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginLeft: 4,
   },
-  servicesGrid: {
+  pickerContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  serviceChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    alignItems: 'center',
+    backgroundColor: colors.inputBackground,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.inputBorder,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 0,
   },
-  serviceChipSelected: {
-    backgroundColor: colors.greenButton,
-    borderColor: colors.greenButton,
-  },
-  serviceChipText: {
+  picker: {
+    flex: 1,
     color: colors.white,
-    fontSize: 14,
-    opacity: 0.8,
+    fontSize: 16,
   },
-  serviceChipTextSelected: {
+  priceReference: {
+    color: colors.white,
+    marginTop: -10,
+    marginBottom: 10,
+    fontSize: 15,
     fontWeight: '600',
-    opacity: 1,
   },
   infoBox: {
     flexDirection: 'row',
@@ -528,11 +558,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBlue,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
   },
   submitButton: {
     flexDirection: 'row',
@@ -542,11 +567,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.greenButton,
     paddingVertical: 16,
     borderRadius: 12,
-    shadowColor: colors.greenButton,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   submitButtonText: {
     color: colors.white,
