@@ -81,6 +81,9 @@ export const pricedServicesApi = {
   create: (token, payload) =>
     request('/priced-services', { method: 'POST', token, body: payload }),
 
-  delete: (token, serviceId) =>
+  update: (token, serviceId, payload) =>
+    request(`/priced-services/${serviceId}`, { method: 'PUT', token, body: payload }),
+
+  remove: (token, serviceId) =>
     request(`/priced-services/${serviceId}`, { method: 'DELETE', token }),
 };
