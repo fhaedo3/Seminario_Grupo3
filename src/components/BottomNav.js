@@ -85,5 +85,3 @@ const styles = StyleSheet.create({
   navButton: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   navText: { color: colors.white, fontSize: 12, marginTop: 4 },
 });
-
-export default BottomNav;

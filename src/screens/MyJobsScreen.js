@@ -186,10 +186,6 @@ export const MyJobsScreen = ({ navigation }) => {
     navigation.navigate('Chat', chatParams);
   };
 
-  const handleOpenReviewScreen = (job) => {
-    navigation.navigate('ReviewProfessional', job)
-  }
-
   return (
     <LinearGradient colors={[colors.primaryBlue, colors.secondaryBlue]} style={styles.background}>
       <StatusBar style="light" />
