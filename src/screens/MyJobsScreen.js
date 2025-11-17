@@ -8,6 +8,8 @@ import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
 import { useAuth } from '../context/AuthContext';
 import { serviceOrdersApi, professionalsApi } from '../api';
+import { Modal, TextInput, Alert } from 'react-native';
+
 
 const statusStyles = {
   PENDING: { label: 'Pendiente', color: '#FCD34D', icon: 'time-outline' },
@@ -25,6 +27,19 @@ export const MyJobsScreen = ({ navigation }) => {
   const [professionalsMap, setProfessionalsMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [completeModalVisible, setCompleteModalVisible] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+
+
+  const [cancelReason, setCancelReason] = useState('');
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [rating, setRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [loadingAction, setLoadingAction] = useState(false);
 
   const isProfessional = useMemo(() => {
     return Array.isArray(roles) && roles.includes('PROFESSIONAL');
@@ -237,10 +252,21 @@ export const MyJobsScreen = ({ navigation }) => {
                           : (job.professional?.profession || 'Servicio')}
                       </Text>
                     </View>
-                    <View style={[styles.statusPill, { backgroundColor: status.color }]}>
-                      <Ionicons name={status.icon} size={14} color={colors.white} style={styles.statusIcon} />
-                      <Text style={styles.statusText}>{status.label}</Text>
-                    </View>
+                    <TouchableOpacity
+                      disabled={!isProfessional || displayStatus !== "PENDING"}
+                      onPress={() => {
+                        if (displayStatus !== "PENDING") return; // seguridad extra
+                        setSelectedJob(job);
+                        setActionModalVisible(true);
+                      }}
+                    >
+
+                      <View style={[styles.statusPillBig, { backgroundColor: status.color }]}>
+                        <Ionicons name={status.icon} size={18} color={colors.white} />
+                        <Text style={styles.statusTextBig}>{status.label}</Text>
+                      </View>
+                    </TouchableOpacity>
+
                   </View>
                   <View style={styles.cardBody}>
                     <Text style={styles.issueLabel}>Trabajo</Text>
@@ -304,6 +330,204 @@ export const MyJobsScreen = ({ navigation }) => {
           )}
           {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
         </ScrollView>
+        <Modal
+          visible={actionModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setActionModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+
+              <Text style={styles.modalTitle}>Acciones del trabajo</Text>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  setConfirmModalVisible(true);
+                  setActionModalVisible(false);
+                }}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#38bdf8" />
+                <Text style={styles.actionButtonText}>Confirmar trabajo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  setCompleteModalVisible(true);
+                  setActionModalVisible(false);
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color={colors.greenButton} />
+                <Text style={styles.actionButtonText}>Completar trabajo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  setActionModalVisible(false);
+                  setConfirmModalVisible(false);
+                  setCancelModalVisible(true);
+                }}
+              >
+                <Ionicons name="close-circle-outline" size={20} color={colors.error} />
+                <Text style={[styles.actionButtonText, { color: colors.error }]}>Cancelar trabajo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setActionModalVisible(false)}
+              >
+                <Text style={styles.closeButtonText}>Cerrar</Text>
+              </TouchableOpacity>
+
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={confirmModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setConfirmModalVisible(false)}
+        >
+          <View style={styles.popupOverlay}>
+            <View style={styles.popupContainer}>
+              <Text style={styles.popupTitle}>Confirmar trabajo</Text>
+              <Text style={styles.popupSubtitle}>Enviá un mensaje opcional al cliente:</Text>
+
+              <TextInput
+                placeholder="Ej: Estaré llegando a la hora acordada"
+                placeholderTextColor={colors.mutedText}
+                value={confirmMessage}
+                onChangeText={setConfirmMessage}
+                style={styles.popupInput}
+              />
+
+              <View style={styles.popupButtons}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setConfirmModalVisible(false)}>
+                  <Text style={styles.cancelButtonText}>Volver</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={async () => {
+                    setLoadingAction(true);
+                    try {
+                      await serviceOrdersApi.confirmJob(selectedJob.id, token, confirmMessage);
+                      await loadJobs();
+                      setConfirmModalVisible(false);
+                    } finally { setLoadingAction(false); }
+                  }}
+                >
+                  <Text style={styles.confirmButtonText}>Confirmar</Text>
+                </TouchableOpacity>
+              </View>
+
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={completeModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setCompleteModalVisible(false)}
+        >
+          <View style={styles.popupOverlay}>
+            <View style={styles.popupContainer}>
+              <Text style={styles.popupTitle}>Completar trabajo</Text>
+              <Text style={styles.popupSubtitle}>Calificá al cliente</Text>
+
+              <View style={styles.ratingRow}>
+                {[1,2,3,4,5].map(star => (
+                  <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                    <Ionicons
+                      name={rating >= star ? "star" : "star-outline"}
+                      size={36}
+                      color="#FFD700"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                placeholder="Comentario (opcional)"
+                placeholderTextColor={colors.mutedText}
+                value={reviewComment}
+                onChangeText={setReviewComment}
+                multiline
+                style={styles.popupInput}
+              />
+
+              <View style={styles.popupButtons}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setCompleteModalVisible(false)}>
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={async () => {
+                    if (rating === 0) return Alert.alert("Seleccioná una calificación");
+                    setLoadingAction(true);
+                    try {
+                      await serviceOrdersApi.complete(selectedJob.id, token, rating, reviewComment);
+                      await loadJobs();
+                      setCompleteModalVisible(false);
+                    } finally { setLoadingAction(false); }
+                  }}
+                >
+                  <Text style={styles.confirmButtonText}>Enviar</Text>
+                </TouchableOpacity>
+              </View>
+
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={cancelModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setCancelModalVisible(false)}
+        >
+          <View style={styles.popupOverlay}>
+            <View style={styles.popupContainer}>
+
+              <Text style={styles.popupTitle}>Cancelar trabajo</Text>
+              <Text style={styles.popupSubtitle}>Motivo de cancelación</Text>
+
+              <TextInput
+                placeholder="Escribí el motivo..."
+                placeholderTextColor={colors.mutedText}
+                value={cancelReason}
+                onChangeText={setCancelReason}
+                multiline
+                style={styles.popupInput}
+              />
+
+              <View style={styles.popupButtons}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setCancelModalVisible(false)}>
+                  <Text style={styles.cancelButtonText}>Volver</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.confirmButton, { backgroundColor: colors.error }]}
+                  onPress={async () => {
+                    if (!cancelReason.trim()) return Alert.alert("Ingresá un motivo");
+                    setLoadingAction(true);
+                    try {
+                      await serviceOrdersApi.cancel(selectedJob.id, token, cancelReason);
+                      await loadJobs();
+                      setCancelModalVisible(false);
+                    } finally { setLoadingAction(false); }
+                  }}
+                >
+                  <Text style={styles.confirmButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+
+            </View>
+          </View>
+        </Modal>
 
         <BottomNav navigation={navigation} />
       </View>
@@ -507,4 +731,114 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
   },
+  statusPillBig: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  statusTextBig: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: colors.primaryBlue,
+    width: '90%',
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 12,
+  },
+  actionButtonText: {
+    color: colors.white,
+    fontSize: 16,
+  },
+
+  popupOverlay: {
+    flex:1,
+    backgroundColor:'rgba(0,0,0,0.7)',
+    justifyContent:'center',
+    padding:20,
+  },
+  popupContainer:{
+    backgroundColor:colors.primaryBlue,
+    borderRadius:16,
+    padding:20,
+  },
+  popupTitle:{
+    color:colors.white,
+    fontSize:20,
+    fontWeight:'700',
+    marginBottom:10,
+  },
+  popupSubtitle:{
+    color:colors.mutedText,
+    fontSize:14,
+    marginBottom:14,
+  },
+  popupInput:{
+    backgroundColor:'rgba(255,255,255,0.1)',
+    borderRadius:10,
+    padding:12,
+    color:colors.white,
+    minHeight:90,
+    marginBottom:20,
+  },
+  popupButtons:{
+    flexDirection:'row',
+    justifyContent:'space-between',
+    gap:12,
+  },
+  cancelButton:{
+    flex:1,
+    borderWidth:1,
+    borderColor:'rgba(255,255,255,0.4)',
+    borderRadius:12,
+    padding:12,
+    alignItems:'center',
+  },
+  cancelButtonText:{
+    color:colors.white,
+    fontWeight:'600',
+  },
+  confirmButton:{
+    flex:1,
+    backgroundColor:colors.greenButton,
+    borderRadius:12,
+    padding:12,
+    alignItems:'center',
+  },
+  confirmButtonText:{
+    color:colors.white,
+    fontWeight:'700',
+  },
+  ratingRow:{
+    flexDirection:'row',
+    justifyContent:'center',
+    gap:8,
+    marginBottom:20,
+  },
+
 });
