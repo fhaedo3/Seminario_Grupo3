@@ -107,8 +107,11 @@ export const PaymentScreen = ({ route, navigation }) => {
           setIsProcessing(false);
           // Navegar a la pantalla de confirmación
           navigation.navigate('ServiceRequested', {
-            hireSummary,
-            paymentMethod: 'mercadopago',
+            hireSummary: {
+              ...hireSummary,
+              servicePrice: servicePrice   // <--- agregar el precio aquí
+            },
+            paymentMethod: selectedPaymentMethod,
           });
         }, 1500); // Simular un pequeño delay del proceso
       } catch (error) {
@@ -153,7 +156,10 @@ export const PaymentScreen = ({ route, navigation }) => {
 
       // Navegar a la pantalla de confirmación
       navigation.navigate('ServiceRequested', {
-        hireSummary,
+        hireSummary: {
+          ...hireSummary,
+          servicePrice: servicePrice   // <--- agregar el precio aquí
+        },
         paymentMethod: selectedPaymentMethod,
       });
     } catch (error) {
