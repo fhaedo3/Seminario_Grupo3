@@ -157,9 +157,12 @@ const priceMap = useMemo(() => {
             description: values.description,
             preferredDate: values.preferredDate,
           },
-          totalAmount: 5000,
+          depositAmount: 5000, // seña fija
+          servicePrice: servicePrices[values.serviceType] || 0, // precio real del servicio
+          totalAmount: 5000, // solo se paga la seña ahora
         },
       });
+
     } catch (error) {
       console.error(error);
       Alert.alert("Error", "No se pudo crear la solicitud.");
