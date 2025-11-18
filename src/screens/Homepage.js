@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView, ActivityIndicator, Alert, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -6,7 +6,6 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { BottomNav } from '../components/BottomNav';
 import { professionalsApi } from '../api';
-import { useAuth } from '../context/AuthContext';
 import LogoConfiServ from '../imagenes/logo_original_tight.png';
 
 // Mapeo de profesiones a iconos
@@ -20,7 +19,6 @@ const professionIcons = {
 };
 
 export const Homepage = ({ navigation, route }) => {
-  const { user } = useAuth();
   const [featuredProfessionals, setFeaturedProfessionals] = useState([]);
   const [loadingProfessionals, setLoadingProfessionals] = useState(false);
 
@@ -29,15 +27,6 @@ export const Homepage = ({ navigation, route }) => {
     return professionIcons[profession] || null;
   };
 
-  const userName = useMemo(() => {
-    if (user?.fullName) {
-      return user.fullName.split(' ')[0];
-    }
-    if (user?.username) {
-      return user.username;
-    }
-    return route?.params?.userName ?? 'Usuario';
-  }, [user, route?.params?.userName]);
 
   useEffect(() => {
     const loadProfessionals = async () => {
@@ -403,7 +392,6 @@ const styles = StyleSheet.create({
    paddingVertical: 6,
     paddingHorizontal: 10,
      borderRadius: 12,
-     alignSelf: 'center',
      marginBottom: 10,
      width: 30,
      height: 120,

@@ -1036,12 +1036,6 @@ const styles = StyleSheet.create({
         color: colors.white,
         fontSize: 16,
     },
-    messageImage: {
-        width: 200,
-        height: 200,
-        borderRadius: 15,
-        marginBottom: 5,
-    },
     chatNotice: {
         flexDirection: 'row',
         alignItems: 'center',

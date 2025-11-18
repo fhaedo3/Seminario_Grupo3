@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,13 +14,14 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { colors } from "../theme/colors";
 import { BottomNav } from "../components/BottomNav";
 import { BackButton } from "../components/BackButton";
 import { showSuccessToast } from "../utils/notifications";
 import { useAuth } from "../context/AuthContext";
 import { professionalsApi } from "../api";
-import { pricedServicesApi } from "../api"; // 1. Importar
+import { pricedServicesApi } from "../api";
 import * as ImagePicker from "expo-image-picker";
 
 const CLOUDINARY_CLOUD_NAME = 'dtjbknm5h';
@@ -113,7 +115,27 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
   const [pricedServices, setPricedServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
 
-  // --- Handle new image ---
+  const loadPricedServices = useCallback(async (profId) => {
+    if (!profId) return;
+    setLoadingServices(true);
+    try {
+      const services = await pricedServicesApi.listByProfessional(profId);
+      setPricedServices(Array.isArray(services) ? services : []);
+    } catch (err) {
+      console.warn('No se pudieron cargar los servicios con precio', err);
+    } finally {
+      setLoadingServices(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (professionalId) {
+        loadPricedServices(professionalId);
+      }
+    }, [professionalId, loadPricedServices])
+  );
+
   const handlePickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -129,7 +151,6 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
     setUploading(true);
     const asset = result.assets[0];
 
-    // Prepara la imagen para Cloudinary
     const data = new FormData();
     data.append('file', {
       uri: asset.uri,
@@ -151,7 +172,7 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
 
       const json = await response.json();
       if (json.secure_url) {
-        setAvatarUrl(json.secure_url); // <-- Guarda la nueva URL
+        setAvatarUrl(json.secure_url);
         Alert.alert('Éxito', 'Imagen actualizada. No olvides guardar los cambios.');
       } else {
         throw new Error(json.error?.message || 'Error al subir la imagen');
@@ -374,22 +395,12 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
       const profile = await professionalsApi.getByUserId(user.id, token);
       setProfessionalId(profile.id);
 
-      // Cargar el avatar si existe
       if (profile.avatarUrl) {
         setAvatarUrl(profile.avatarUrl);
       }
 
-      // 2. Cargar los servicios con precio
       if (profile.id) {
-        setLoadingServices(true);
-        try {
-          const services = await pricedServicesApi.listByProfessional(profile.id);
-          setPricedServices(Array.isArray(services) ? services : []);
-        } catch (err) {
-          console.warn('No se pudieron cargar los servicios con precio', err);
-        } finally {
-          setLoadingServices(false);
-        }
+        loadPricedServices(profile.id);
       }
 
       const combinedServices = new Set([
@@ -451,7 +462,7 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
       setLoading(false);
       setProfileLoaded(true);
     }
-  }, [token, user]);
+  }, [token, user, loadPricedServices]);
 
   useEffect(() => {
     loadProfessionalProfile();
@@ -620,7 +631,6 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
                 ) : avatarUrl ? (
                   <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
                 ) : (
-                  // Tu placeholder actual
                   <View style={styles.avatarPlaceholder}>
                     <View style={styles.avatarHead} />
                     <View style={styles.avatarBody} />
@@ -778,8 +788,18 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
                         <Text style={styles.infoText}>Aún no has agregado servicios con precio de referencia.</Text>
                       )}
                       {pricedServices.map((service) => (
-                        <View key={service.id} style={styles.servicePriceCard}>
-                          <View>
+                        <TouchableOpacity
+                          key={service.id}
+                          style={styles.servicePriceCard}
+                          onPress={() =>
+                            navigation.navigate('EditPricedService', {
+                              professionalId,
+                              service,
+                              onGoBack: () => loadPricedServices(professionalId),
+                            })
+                          }
+                        >
+                          <View style={{ flex: 1 }}>
                             <Text style={styles.serviceName}>{service.serviceName}</Text>
                             <Text style={styles.serviceDesc}>{service.description || 'Sin descripción'}</Text>
                           </View>
@@ -793,11 +813,23 @@ export const ProfileProfessionalScreen = ({ navigation }) => {
                             <Text style={styles.priceLabel}>Precio Final:</Text>
                             <Text style={styles.priceValueFinal}>${service.finalPrice}</Text>
                           </View>
-                        </View>
+                          <Ionicons name="chevron-forward" size={22} color={colors.white} style={{ marginLeft: 8 }} />
+                        </TouchableOpacity>
                       ))}
+                      <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={() =>
+                          navigation.navigate('EditPricedService', {
+                            professionalId,
+                            onGoBack: () => loadPricedServices(professionalId),
+                          })
+                        }
+                      >
+                        <Ionicons name="add-circle-outline" size={22} color={colors.white} />
+                        <Text style={styles.addButtonText}>Agregar nuevo servicio</Text>
+                      </TouchableOpacity>
                     </>
                   )}
-                  {/* Aquí iría el formulario para agregar un nuevo servicio */}
                 </View>
               )}
 
@@ -1191,6 +1223,7 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     fontSize: 14,
     marginBottom: 16,
+    textAlign: 'center',
   },
   scanButton: {
     flexDirection: "row",
@@ -1278,9 +1311,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     opacity: 0.8,
     marginTop: 4,
+    flexShrink: 1,
   },
   priceBreakdown: {
     alignItems: 'flex-end',
+    marginLeft: 12,
   },
   priceLabel: {
     color: colors.white,
@@ -1298,5 +1333,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 4,
   },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  addButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
-

@@ -9,6 +9,7 @@ import { ChatScreen } from '../screens/ChatScreen';
 import { ReplyToReview } from '../screens/ReplyToReview';
 import { SearchProfessionalsScreen } from '../screens/SearchProfessionalsScreen';
 import { ProfessionalDetails } from '../screens/ProfessionalDetails';
+import { EditPricedServicesScreen } from '../screens/EditPricedServicesScreen';
 
 const Stack = createStackNavigator();
 
@@ -31,6 +32,9 @@ export const ProfessionalStack = () => {
 
       {/* Editar perfil profesional */}
       <Stack.Screen name="EditProfile" component={ProfileProfessionalScreen} />
+
+      {/* Editar servicios con precio */}
+      <Stack.Screen name="EditPricedService" component={EditPricedServicesScreen} />
 
       {/* Trabajos del profesional */}
       <Stack.Screen name="MyJobs" component={MyJobsScreen} />
