@@ -131,6 +131,9 @@ const priceMap = useMemo(() => {
       );
     }
 
+    const selectedPrice = priceMap[values.serviceType] || 0;
+    const depositAmount = 5000; // seña fija por ahora
+
     const payload = {
       professionalId: professional.id,
       contactName: user?.fullName || 'Cliente',
@@ -142,7 +145,12 @@ const priceMap = useMemo(() => {
       preferredDate: values.preferredDate,
       budget: 0,
       paymentPreference: 'card',
+
+      // CAMPOS NUEVOS CORRECTOS
+      servicePrice: selectedPrice,
+      depositAmount: depositAmount
     };
+
 
     try {
       const serviceOrder = await serviceOrdersApi.create(token, payload);

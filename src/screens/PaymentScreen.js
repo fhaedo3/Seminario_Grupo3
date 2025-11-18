@@ -85,7 +85,9 @@ export const PaymentScreen = ({ route, navigation }) => {
         // Primero crear el pago en el backend
         const payload = {
           serviceOrderId,
-          amount: Number(hireSummary?.totalAmount) || 0,
+          amount: depositAmount,
+          totalServicePrice: servicePrice,
+          commissionAmount: servicePrice * 0.12,
           currency: 'ARS',
           method: paymentMethodType,
           professionalId,
