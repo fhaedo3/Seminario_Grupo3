@@ -225,11 +225,11 @@ export const PaymentScreen = ({ route, navigation }) => {
 
             <View style={styles.summaryRow}>
                           <Text style={styles.summaryLabel}>Comisión :</Text>
-                          <Text style={styles.summaryValue}>12%</Text>
+                          <Text style={styles.summaryValue}>15%</Text>
                         </View>
 
             <Text style={styles.summaryNote}>
-              Se descontará un 12% del total de la contratación al profesional.
+              Se descontará un 15% del total de la contratación al profesional.
             </Text>
 
             <View style={styles.summaryRow}>

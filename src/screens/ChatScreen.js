@@ -149,7 +149,7 @@ export const ChatScreen = ({ navigation, route }) => {
                     ? response.content.map((msg) => ({
                           id: msg.id,
                           text: msg.content,
-                          sender: msg.senderType === 'USER' ? 'user' : 'professional',
+                          senderId: msg.senderId,
                           createdAt: msg.createdAt,
                           attachmentUrl: msg.attachmentUrl,
                       }))
@@ -195,7 +195,7 @@ export const ChatScreen = ({ navigation, route }) => {
             }
 
             const payload = {
-                senderType: 'USER',
+                senderType: isProfessionalInThisJob ? 'PROFESSIONAL' : 'USER',
                 senderId,
                 content: inputText.trim() || '📷 Imagen',
                 attachmentUrl,
@@ -206,7 +206,7 @@ export const ChatScreen = ({ navigation, route }) => {
             const newMessage = {
                 id: response.id,
                 text: response.content,
-                sender: response.senderType === 'USER' ? 'user' : 'professional',
+                senderId: response.senderId,
                 createdAt: response.createdAt,
                 attachmentUrl: response.attachmentUrl,
             };
@@ -508,16 +508,16 @@ export const ChatScreen = ({ navigation, route }) => {
     };
 
     const MessageBubble = ({ msg }) => {
-        const isUser = msg.sender === 'user';
+        const isCurrentUser = msg.senderId === senderId;
         const hasAttachment = msg.attachmentUrl || msg.image;
         
         return (
-            <View style={[styles.messageRow, { justifyContent: isUser ? 'flex-end' : 'flex-start' }]}>            
-                {!isUser && <Image source={avatarSource} style={styles.avatar} />}
+            <View style={[styles.messageRow, { justifyContent: isCurrentUser ? 'flex-end' : 'flex-start' }]}>            
+                {!isCurrentUser && <Image source={avatarSource} style={styles.avatar} />}
                 <View
                     style={[
                         styles.messageBubble,
-                        isUser ? styles.userMessage : styles.professionalMessage,
+                        isCurrentUser ? styles.userMessage : styles.professionalMessage,
                     ]}
                 >
                     {hasAttachment && (

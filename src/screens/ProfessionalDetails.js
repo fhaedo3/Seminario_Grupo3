@@ -17,6 +17,7 @@ export const ProfessionalDetails = ({ route, navigation }) => {
   const [myProfessionalProfile, setMyProfessionalProfile] = useState(null);
   const [pricedServices, setPricedServices] = useState([]);
   const [loadingPricedServices, setLoadingPricedServices] = useState(false);
+  const [pricedServicesExpanded, setPricedServicesExpanded] = useState(false);
 
   // Estados para filtros y ordenamiento
   const [sortBy, setSortBy] = useState('CREATED_AT');
@@ -230,45 +231,43 @@ export const ProfessionalDetails = ({ route, navigation }) => {
 
         {/* 3. Nueva Sección: Precios de Referencia */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => setPricedServicesExpanded((prev) => !prev)}
+            disabled={pricedServices.length === 0}
+          >
             <Ionicons name="cash-outline" size={24} color={colors.white} />
             <Text style={styles.sectionTitle}>Precios de Referencia</Text>
-          </View>
+            {pricedServices.length > 0 && (
+              <Ionicons
+                name={pricedServicesExpanded ? 'chevron-down' : 'chevron-forward'}
+                size={24}
+                color={colors.white}
+              />
+            )}
+          </TouchableOpacity>
 
-          {loadingPricedServices ? (
-            <ActivityIndicator color={colors.white} style={{ marginVertical: 10 }} />
-          ) : pricedServices.length === 0 ? (
-            <Text style={styles.sectionText}>Este profesional no tiene precios de referencia cargados.</Text>
-          ) : (
-            pricedServices.map((service) => (
-              <View key={service.id} style={styles.priceReferenceCard}>
-                <View style={styles.priceInfo}>
-                  <Text style={styles.priceServiceName}>{service.serviceName}</Text>
-                  <Text style={styles.priceServiceDesc}>{service.description || 'Consulta por más detalles'}</Text>
-                </View>
-                <View style={styles.priceTag}>
-                  {/* El cliente SÓLO ve el precio final */}
-                  <Text style={styles.priceTagText}>${service.finalPrice}</Text>
-                </View>
-              </View>
-            ))
+          {pricedServicesExpanded && (
+            <>
+              {loadingPricedServices ? (
+                <ActivityIndicator color={colors.white} style={{ marginVertical: 10 }} />
+              ) : pricedServices.length === 0 ? (
+                <Text style={styles.sectionText}>Este profesional no tiene precios de referencia cargados.</Text>
+              ) : (
+                pricedServices.map((service) => (
+                  <View key={service.id} style={styles.priceReferenceCard}>
+                    <View style={styles.priceInfo}>
+                      <Text style={styles.priceServiceName}>{service.serviceName}</Text>
+                      <Text style={styles.priceServiceDesc}>{service.description || 'Consulta por más detalles'}</Text>
+                    </View>
+                    <View style={styles.priceTag}>
+                      <Text style={styles.priceTagText}>${service.finalPrice}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </>
           )}
-        </View>
-
-        {/* Sección: Contacto */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="call-outline" size={24} color={colors.white} />
-            <Text style={styles.sectionTitle}>Información de contacto</Text>
-          </View>
-          <View style={styles.contactItem}>
-            <Ionicons name="call" size={18} color={colors.white} />
-            <Text style={styles.contactText}>{professional.contactPhone || 'No disponible'}</Text>
-          </View>
-          <View style={styles.contactItem}>
-            <Ionicons name="mail" size={18} color={colors.white} />
-            <Text style={styles.contactText}>{professional.contactEmail || 'No disponible'}</Text>
-          </View>
         </View>
 
         {/* Sección: Opiniones */}
