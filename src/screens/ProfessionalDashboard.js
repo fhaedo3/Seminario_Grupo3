@@ -280,7 +280,7 @@ export const ProfessionalDashboard = ({ navigation }) => {
                       <View style={styles.reviewUser}>
                         <Ionicons name="person-circle" size={40} color={colors.white} />
                         <View style={styles.reviewUserInfo}>
-                          <Text style={styles.reviewUserName}>{review.reviewerName || "Usuario"}</Text>
+                          <Text style={styles.reviewUserName}>{review.userDisplayName || "Usuario"}</Text>
                           <View style={styles.reviewRating}>
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Ionicons
