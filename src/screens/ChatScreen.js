@@ -31,6 +31,8 @@ const fallbackProfessional = {
     profession: 'Plomero',
 };
 
+const defaultAvatar = 'https://res.cloudinary.com/dtjbknm5h/image/upload/v1762223757/user_hzfwna.jpg';
+
 export const ChatScreen = ({ navigation, route }) => {
     const professional = route?.params?.professional ?? fallbackProfessional;
     const clientData = route?.params?.clientData ?? null; // Datos del cliente
@@ -80,18 +82,14 @@ export const ChatScreen = ({ navigation, route }) => {
         if (isProfessionalInThisJob && clientData) {
             // Si soy profesional, mostrar datos del cliente
             return {
-                avatarSource: clientData.avatarUrl
-                    ? { uri: clientData.avatarUrl }
-                    : require('../assets/images/plomero1.png'),
+                avatarSource: { uri: clientData.avatarUrl || defaultAvatar },
                 name: clientData.name || clientData.username || 'Cliente',
                 subtitle: clientData.address || 'Cliente',
             };
         } else {
             // Si soy cliente, mostrar datos del profesional
             return {
-                avatarSource: professional.avatarUrl
-                    ? { uri: professional.avatarUrl }
-                    : require('../assets/images/plomero1.png'),
+                avatarSource: { uri: professional.avatarUrl || defaultAvatar },
                 name: professional.name || professional.displayName || 'Profesional',
                 subtitle: professional.profession || 'Especialista',
             };

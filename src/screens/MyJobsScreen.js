@@ -9,6 +9,7 @@ import { BottomNav } from '../components/BottomNav';
 import { useAuth } from '../context/AuthContext';
 import { serviceOrdersApi, professionalsApi } from '../api';
 import { Modal, TextInput, Alert } from 'react-native';
+import { withBaseUrl } from '../config/api';
 
 
 const statusStyles = {
@@ -18,8 +19,10 @@ const statusStyles = {
   IN_PROGRESS: { label: 'En curso', color: '#facc15', icon: 'construct-outline' },
   COMPLETED: { label: 'Finalizado', color: colors.greenButton, icon: 'checkmark-done-outline' },
   CANCELLED: { label: 'Cancelado', color: colors.error, icon: 'close-circle-outline' },
-  AWAITING_RATING: { label: 'Esperando calificación', color: '#9333ea', icon: 'star-half-outline' },
+  AWAITING_RATING: { label: 'Calificando', color: '#9333ea', icon: 'star-half-outline' },
 };
+
+const defaultAvatar = 'https://res.cloudinary.com/dtjbknm5h/image/upload/v1762223757/user_hzfwna.jpg';
 
 export const MyJobsScreen = ({ navigation }) => {
   const { token, roles, user } = useAuth();
@@ -35,7 +38,6 @@ export const MyJobsScreen = ({ navigation }) => {
 
 
   const [cancelReason, setCancelReason] = useState('');
-  const [confirmMessage, setConfirmMessage] = useState('');
   const [rating, setRating] = useState(0);
   const [reviewComment, setReviewComment] = useState('');
   const [selectedJob, setSelectedJob] = useState(null);
@@ -73,18 +75,50 @@ export const MyJobsScreen = ({ navigation }) => {
   };
 
   const formatSchedule = (job) => {
-    // Si hay fecha programada (scheduledAt), usarla
-    if (job.scheduledAt) {
-      const date = new Date(job.scheduledAt);
+    // For SCHEDULED or COMPLETED jobs, use preferredDate as the accepted date.
+    if ((job.status === 'SCHEDULED' || job.status === 'COMPLETED') && job.preferredDate) {
+      // Assuming preferredDate is in "DD/MM/YYYY" format.
+      const parts = job.preferredDate.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts.map(Number);
+        if (day > 0 && day <= 31 && month > 0 && month <= 12 && year > 1900) {
+          const date = new Date(year, month - 1, day);
+          if (!Number.isNaN(date.getTime())) {
+            return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          }
+        }
+      }
+      // Fallback for other formats or if parsing fails
+      const date = new Date(job.preferredDate);
       if (!Number.isNaN(date.getTime())) {
-        const dateText = date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+        return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      }
+      return job.preferredDate; // Raw string as last resort
+    }
+
+    // For other statuses, use scheduledAt if available (e.g., with time)
+    if (job.scheduledAt) {
+      const date = new Date(job.scheduledAt); // ISO string from backend is safe
+      if (!Number.isNaN(date.getTime())) {
+        const dateText = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
         const timeText = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
         return `${dateText} · ${timeText}`;
       }
     }
     
-    // Si no hay fecha programada pero sí fecha preferida, mostrarla
+    // Then fallback to preferredDate and mark it as "preferida"
     if (job.preferredDate) {
+      const parts = job.preferredDate.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts.map(Number);
+        if (day > 0 && day <= 31 && month > 0 && month <= 12 && year > 1900) {
+          const date = new Date(year, month - 1, day);
+          if (!Number.isNaN(date.getTime())) {
+            const dateText = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+            return `${dateText} (preferida)`;
+          }
+        }
+      }
       const date = new Date(job.preferredDate);
       if (!Number.isNaN(date.getTime())) {
         const dateText = date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
@@ -186,6 +220,121 @@ export const MyJobsScreen = ({ navigation }) => {
     navigation.navigate('Chat', chatParams);
   };
 
+  const handleConfirmJob = async () => {
+    if (!selectedJob) return;
+  
+    setLoadingAction(true);
+    try {
+      const response = await fetch(withBaseUrl(`/service-orders/${selectedJob.id}/confirm`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+  
+      if (!response.ok) {
+        throw new Error('No se pudo confirmar el trabajo');
+      }
+  
+      await loadJobs();
+      setConfirmModalVisible(false);
+  
+    } catch (error) {
+      console.error('Error confirming job:', error);
+      Alert.alert('Error', 'No se pudo confirmar el trabajo. Intentá nuevamente.');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const handleCompleteJob = async () => {
+    if (!selectedJob) return;
+  
+    if (rating === 0) {
+      Alert.alert('Calificación requerida', 'Por favor seleccioná una calificación antes de continuar.');
+      return;
+    }
+  
+    setLoadingAction(true);
+    try {
+      const response = await fetch(withBaseUrl(`/service-orders/${selectedJob.id}/complete`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          rating: rating,
+          comment: reviewComment.trim() || null,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || 'No se pudo completar el trabajo');
+      }
+  
+      const updatedOrder = await response.json();
+      
+      let title = '¡Calificación enviada!';
+      let message = isProfessional
+        ? 'Tu calificación ha sido guardada. El trabajo se marcará como completado cuando el cliente también califique.'
+        : 'Tu calificación ha sido guardada. El trabajo se marcará como completado cuando el profesional también califique.';
+  
+      if (updatedOrder.status === 'COMPLETED') {
+        message = '¡Excelente! Ambas partes han calificado. El trabajo está completamente finalizado.';
+      }
+  
+      Alert.alert(title, message, [{ text: 'OK', onPress: () => loadJobs() }]);
+      setCompleteModalVisible(false);
+      setRating(0);
+      setReviewComment('');
+  
+    } catch (error) {
+      console.error('Error completing job:', error);
+      Alert.alert('Error', error.message || 'No se pudo completar el trabajo. Intentá nuevamente.');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+  
+  const handleCancelJob = async () => {
+    if (!selectedJob) return;
+  
+    if (!cancelReason.trim()) {
+      Alert.alert('Razón requerida', 'Por favor escribí la razón de la cancelación.');
+      return;
+    }
+  
+    setLoadingAction(true);
+    try {
+      const response = await fetch(withBaseUrl(`/service-orders/${selectedJob.id}/cancel`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reason: cancelReason.trim(),
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('No se pudo cancelar el trabajo');
+      }
+  
+      Alert.alert('Trabajo cancelado', 'El trabajo ha sido cancelado exitosamente.', [{ text: 'OK', onPress: () => loadJobs() }]);
+      setCancelModalVisible(false);
+      setCancelReason('');
+  
+    } catch (error) {
+      console.error('Error cancelling job:', error);
+      Alert.alert('Error', 'No se pudo cancelar el trabajo. Intentá nuevamente.');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
   return (
     <LinearGradient colors={[colors.primaryBlue, colors.secondaryBlue]} style={styles.background}>
       <StatusBar style="light" />
@@ -229,11 +378,7 @@ export const MyJobsScreen = ({ navigation }) => {
                 <View key={job.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <Image
-                      source={
-                        isProfessional
-                          ? require('../assets/images/plomero1.png') // Icono genérico para cliente
-                          : (job.professional?.avatarUrl ? { uri: job.professional.avatarUrl } : require('../assets/images/plomero1.png'))
-                      }
+                      source={{ uri: isProfessional ? defaultAvatar : (job.professional?.avatarUrl || defaultAvatar) }}
                       style={styles.avatar}
                     />
                     <View style={styles.cardTitleArea}>
@@ -249,9 +394,9 @@ export const MyJobsScreen = ({ navigation }) => {
                       </Text>
                     </View>
                     <TouchableOpacity
-                      disabled={!isProfessional || displayStatus !== "PENDING"}
+                      disabled={!isProfessional || (displayStatus !== 'PENDING' && displayStatus !== 'SCHEDULED')}
                       onPress={() => {
-                        if (displayStatus !== "PENDING") return; // seguridad extra
+                        if (displayStatus !== 'PENDING' && displayStatus !== 'SCHEDULED') return;
                         setSelectedJob(job);
                         setActionModalVisible(true);
                       }}
@@ -313,7 +458,10 @@ export const MyJobsScreen = ({ navigation }) => {
                   {displayStatus === 'AWAITING_RATING' && (
                     (isProfessional && !job.completedByProfessional) || (!isProfessional && !job.completedByClient)
                   ) && (
-                    <TouchableOpacity onPress={() => handleOpenChat(job)}>
+                    <TouchableOpacity onPress={() => {
+                      setSelectedJob(job);
+                      setCompleteModalVisible(true);
+                    }}>
                       <View style={[styles.cardFooter, styles.cardFooterHighlight]}>
                         <Text style={styles.cardFooterTextHighlight}>¡Calificá para completar!</Text>
                         <Ionicons name="star" size={24} color="#FFD700" />
@@ -337,16 +485,18 @@ export const MyJobsScreen = ({ navigation }) => {
 
               <Text style={styles.modalTitle}>Acciones del trabajo</Text>
 
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  setConfirmModalVisible(true);
-                  setActionModalVisible(false);
-                }}
-              >
-                <Ionicons name="calendar-outline" size={20} color="#38bdf8" />
-                <Text style={styles.actionButtonText}>Confirmar trabajo</Text>
-              </TouchableOpacity>
+              {selectedJob?.status !== 'SCHEDULED' && (
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => {
+                    setConfirmModalVisible(true);
+                    setActionModalVisible(false);
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={20} color="#38bdf8" />
+                  <Text style={styles.actionButtonText}>Confirmar trabajo</Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.actionButton}
@@ -390,15 +540,7 @@ export const MyJobsScreen = ({ navigation }) => {
           <View style={styles.popupOverlay}>
             <View style={styles.popupContainer}>
               <Text style={styles.popupTitle}>Confirmar trabajo</Text>
-              <Text style={styles.popupSubtitle}>Enviá un mensaje opcional al cliente:</Text>
-
-              <TextInput
-                placeholder="Ej: Estaré llegando a la hora acordada"
-                placeholderTextColor={colors.mutedText}
-                value={confirmMessage}
-                onChangeText={setConfirmMessage}
-                style={styles.popupInput}
-              />
+              <Text style={styles.popupSubtitle}>¿Estás seguro de que querés confirmar este trabajo?</Text>
 
               <View style={styles.popupButtons}>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setConfirmModalVisible(false)}>
@@ -406,17 +548,11 @@ export const MyJobsScreen = ({ navigation }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={async () => {
-                    setLoadingAction(true);
-                    try {
-                      await serviceOrdersApi.confirmJob(selectedJob.id, token, confirmMessage);
-                      await loadJobs();
-                      setConfirmModalVisible(false);
-                    } finally { setLoadingAction(false); }
-                  }}
+                  style={[styles.confirmButton, loadingAction && { opacity: 0.7 }]}
+                  onPress={handleConfirmJob}
+                  disabled={loadingAction}
                 >
-                  <Text style={styles.confirmButtonText}>Confirmar</Text>
+                  {loadingAction ? <ActivityIndicator color={colors.white} /> : <Text style={styles.confirmButtonText}>Confirmar</Text>}
                 </TouchableOpacity>
               </View>
 
@@ -432,7 +568,12 @@ export const MyJobsScreen = ({ navigation }) => {
           <View style={styles.popupOverlay}>
             <View style={styles.popupContainer}>
               <Text style={styles.popupTitle}>Completar trabajo</Text>
-              <Text style={styles.popupSubtitle}>Calificá al cliente</Text>
+              <Text style={styles.popupSubtitle}>
+                {isProfessional 
+                  ? '¿Cómo fue tu experiencia con el cliente?' 
+                  : `¿Cómo fue tu experiencia con ${selectedJob?.professional?.displayName || 'el profesional'}?`
+                }
+              </Text>
 
               <View style={styles.ratingRow}>
                 {[1,2,3,4,5].map(star => (
@@ -461,18 +602,11 @@ export const MyJobsScreen = ({ navigation }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={async () => {
-                    if (rating === 0) return Alert.alert("Seleccioná una calificación");
-                    setLoadingAction(true);
-                    try {
-                      await serviceOrdersApi.complete(selectedJob.id, token, rating, reviewComment);
-                      await loadJobs();
-                      setCompleteModalVisible(false);
-                    } finally { setLoadingAction(false); }
-                  }}
+                  style={[styles.confirmButton, loadingAction && { opacity: 0.7 }]}
+                  onPress={handleCompleteJob}
+                  disabled={loadingAction}
                 >
-                  <Text style={styles.confirmButtonText}>Enviar</Text>
+                  {loadingAction ? <ActivityIndicator color={colors.white} /> : <Text style={styles.confirmButtonText}>Enviar</Text>}
                 </TouchableOpacity>
               </View>
 
@@ -506,18 +640,11 @@ export const MyJobsScreen = ({ navigation }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.confirmButton, { backgroundColor: colors.error }]}
-                  onPress={async () => {
-                    if (!cancelReason.trim()) return Alert.alert("Ingresá un motivo");
-                    setLoadingAction(true);
-                    try {
-                      await serviceOrdersApi.cancel(selectedJob.id, token, cancelReason);
-                      await loadJobs();
-                      setCancelModalVisible(false);
-                    } finally { setLoadingAction(false); }
-                  }}
+                  style={[styles.confirmButton, { backgroundColor: colors.error }, loadingAction && { opacity: 0.7 }]}
+                  onPress={handleCancelJob}
+                  disabled={loadingAction}
                 >
-                  <Text style={styles.confirmButtonText}>Cancelar</Text>
+                  {loadingAction ? <ActivityIndicator color={colors.white} /> : <Text style={styles.confirmButtonText}>Cancelar</Text>}
                 </TouchableOpacity>
               </View>
 
@@ -770,6 +897,17 @@ const styles = StyleSheet.create({
   actionButtonText: {
     color: colors.white,
     fontSize: 16,
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  closeButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 
   popupOverlay: {
